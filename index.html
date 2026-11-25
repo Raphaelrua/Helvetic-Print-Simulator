@@ -91,9 +91,34 @@ table.kt tr.grp td{background:var(--soft);font:600 .74rem var(--f-body);text-tra
 .legend i.f{background:var(--accent)}
 #tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font:12px var(--f-num);padding:5px 8px;border-radius:4px;z-index:50}
 .btn.danger{border-color:var(--bad);color:var(--bad)}
+/* Angleichung an den Aufbau der Spieloberfläche: weisse Arbeitsfläche, Menüknopf links, Infohub-Tabelle */
+.top .menu{display:inline-flex}
+.shell{background:var(--panel)}
+.shell.collapsed{grid-template-columns:minmax(0,1fr)}
+.shell.collapsed .side{display:none}
+.side{padding-top:0}
+.side::before{content:"";display:block;height:48px;background:rgba(255,255,255,.08)}
+.main{max-width:none;background:var(--panel);padding-top:28px}
+.vh h1{font:400 2.7rem var(--f-body);color:var(--head-row);letter-spacing:-.01em}
+.vh p{font-size:1.25rem;color:var(--head-row);margin-top:.1rem}
+h2.sec{font:400 1.75rem var(--f-body);color:var(--head-row);margin-bottom:4px}
+table.kt{border-collapse:collapse}
+table.kt th{font:600 .86rem var(--f-body);padding:8px 10px;text-align:left}
+table.kt th.n{text-align:right}
+table.kt th.u{font-style:italic;text-align:right}
+table.kt td{font-family:var(--f-body);font-size:.88rem}
+table.kt td.n{font-family:var(--f-body);font-variant-numeric:tabular-nums}
+table.kt td.cur{font-weight:700}
+.team .tf{display:flex;flex-direction:column;gap:4px;font-size:1rem}
+.team .tf input[type=text]{border:1px solid var(--line);border-radius:3px;padding:.4rem .5rem;font:inherit;background:var(--input);color:var(--ink)}
+.team .tf label{color:var(--ink);font-size:1.05rem}
+.team .logo{max-width:180px;max-height:90px;object-fit:contain}
+.btn.blue{background:var(--head-row);border-color:var(--head-row);color:var(--head-ink);font:500 1rem var(--f-body);padding:.75rem 2rem;border-radius:2px;align-self:flex-start}
+hr.full{border:0;border-top:2px solid var(--line);margin:24px calc(-1 * max(20px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(20px, env(safe-area-inset-left, 0px)))}
+.welcome{display:flex;flex-direction:column;gap:12px;max-width:110ch}
+.welcome p{margin:0;font-size:.95rem}
 @media (max-width:800px){
   .shell{grid-template-columns:minmax(0,1fr)}
-  .top .menu{display:inline-flex}
   .side{display:none;padding-top:0}
   .side.open{display:block}
   .pnums{border-left:0;padding-left:0;width:100%;overflow-x:auto}
@@ -907,27 +932,28 @@ function kv(o, f, d, kind){
 function viewInfohub(){
   const k = state.cur, prev = prevOf(k);
   const cur = kpiFor(k), pv = kpiFor(prev);
-  const rows = KPI_ROWS.concat([null]).concat(KPI_EXTRA);
-  let h = `<div class="vh"><h1>Infohub</h1><p>Periode ${k.slice(1)} · Helvetic Print AG</p></div>
+  const T = state.team || {};
+  let h = `<div class="vh"><h1>Infohub</h1><p>Willkommen im Helvetic Print Simulator</p></div>
   <div class="hub"><div class="tw"><h2 class="sec">Kennzahlen</h2>
   <table class="kt"><thead><tr><th>Übersicht KPIs</th><th class="u">Einheit</th><th class="n">Vorperiode</th><th class="n">Aktuelle Periode</th></tr></thead><tbody>
-  ${rows.map(r=> r===null ? `<tr class="grp"><td colspan="4">Zusätzlich aus dem Simulator</td></tr>` :
-    `<tr><td>${esc(r[0])}</td><td class="u">${esc(r[1])}</td><td class="n">${kv(pv,r[2],r[3],r[4])}</td><td class="n cur">${kv(cur,r[2],r[3],r[4])}</td></tr>`).join('')}
-  ${cur && cur.planDev!==undefined && cur.planDev!==null ? `<tr><td>Abweichung Planwert Markt 1</td><td class="u">%</td><td class="n"><span class="na">–</span></td><td class="n cur">${fmt(cur.planDev*100,1)}</td></tr>`:''}
-  </tbody></table>
-  <p class="note">Vorperiode: ${pv?srcPill(pv.src):'–'} · Aktuelle Periode: ${cur?srcPill(cur.src):'–'}. «n. b.» heisst: Das Modell berechnet diesen Wert nicht.</p></div>
+  ${KPI_ROWS.map(r=>`<tr><td>${esc(r[0])}</td><td class="u">${esc(r[1])}</td><td class="n">${kv(pv,r[2],r[3],r[4])}</td><td class="n cur">${kv(cur,r[2],r[3],r[4])}</td></tr>`).join('')}
+  </tbody></table></div>
   <aside class="team"><h2 class="sec">Ihr Team</h2>
-    <dl><dt>Unternehmen</dt><dd>2 · Helvetic Print AG</dd><dt>Produkt</dt><dd>Copy Classic ${cache[k]&&cache[k].r.end.product==='G2'?'Gen. 2':'Gen. 1'}</dd><dt>Datenstand</dt><dd>${cur?SRC_TXT[cur.src]:'–'}</dd><dt>Rating</dt><dd>${cur?esc(cur.rating):'–'}</dd></dl>`;
-  if (k!=='P0' && cache[k]){
-    const r = cache[k].r;
-    h += `<div class="liq" style="flex-direction:column;align-items:flex-start;gap:4px"><h3>Liquiditätsbedarf ${k}</h3><div class="big num">${fmt(k==='P1'?IST_KPI.P1.uek:r.uek,2)} MEUR</div><div class="note">${k==='P1'?'Ist laut Bericht P1':'Simulation, in Moodle melden'}</div></div>`;
-    if (k!=='P1') h += r.warnings.length ? `<button class="btn" data-view="decisions">${r.warnings.length} Warnung${r.warnings.length>1?'en':''} ansehen</button>` : `<span class="pill good">Keine Warnungen</span>`;
-    if (k!=='P1') h += `<button class="btn danger" id="btn-reset-hub">${resetArmed?'Wirklich zurücksetzen? Nochmals klicken':'Periode zurücksetzen'}</button>`;
-  }
-  h += `</aside></div>`;
+    <div class="tf"><label for="team-name">Teamname</label><input type="text" id="team-name" data-team="name" value="${esc(T.name||'')}" placeholder="z. B. Helvetic Print AG"></div>
+    <div class="tf"><label for="team-slogan">Slogan</label><input type="text" id="team-slogan" data-team="slogan" value="${esc(T.slogan||'')}" placeholder="Slogan eingeben"></div>
+    <div class="tf"><label for="team-logo">Logo</label>${T.logo?`<img class="logo" src="${T.logo}" alt="Team-Logo">`:''}<input type="file" id="team-logo" accept="image/*"></div>
+    <button class="btn blue" id="btn-team-reset">Zurücksetzen</button>
+  </aside></div>
+  <hr class="full">
+  <section class="welcome"><h2 class="sec">Willkommen im Helvetic Print Simulator</h2>
+    <p>Hier rechnet ihr die Entscheide von Unternehmen 2 durch, bevor ihr sie im Planspiel eingebt. Die Periode wählt ihr oben rechts, die Bereiche links im Menü. Periode 0 und 1 zeigen die echten Berichtswerte, ab Periode 2 rechnet das Modell.</p>
+    <p>Vorperiode: ${pv?srcPill(pv.src):'–'} · Aktuelle Periode: ${cur?srcPill(cur.src):'–'} · «n. b.» heisst: Das Modell berechnet diesen Wert nicht, er steht nach der Auswertung im Bericht.</p>
+    ${k!=='P0' ? `<h3>Weitere Werte der Periode ${k.slice(1)}</h3>` + tbl(['Kennzahl','Vorperiode','Aktuelle Periode'], KPI_EXTRA.map(r=>[esc(r[0])+' ('+esc(r[1])+')', kv(pv,r[2],r[3],r[4]), kv(cur,r[2],r[3],r[4])])
+      .concat(cur && cur.planDev!==undefined && cur.planDev!==null ? [['Abweichung Planwert Markt 1 (%)','–',fmt(cur.planDev*100,1)]] : [])) : ''}
+    ${k!=='P0' && k!=='P1' && cache[k] ? (cache[k].r.warnings.length ? `<button class="btn" data-view="decisions">${cache[k].r.warnings.length} Warnung${cache[k].r.warnings.length>1?'en':''} unter Entscheidungen ansehen</button>` : `<span class="pill good">Keine Warnungen</span>`) : ''}
+  </section>`;
   return h;
 }
-let resetArmed = false;
 
 /* ---------- Ansicht: Neuigkeiten ---------- */
 const NEWS = {
@@ -1060,13 +1086,12 @@ document.addEventListener('click', e=>{
     state.view = b.dataset.view; resetArmed = false; save(); renderNav(); renderView();
     $('#side').classList.remove('open'); $('#menu').setAttribute('aria-expanded','false'); window.scrollTo(0,0); return;
   }
-  if (b.id==='menu'){ const o = $('#side').classList.toggle('open'); b.setAttribute('aria-expanded', String(o)); return; }
-  if (b.id==='btn-reset-hub'){
-    if (!resetArmed){ resetArmed = true; renderView(); return; }
-    resetArmed = false; const k = state.cur; const d = defaultState();
-    if (d.periods[k]) state.periods[k] = d.periods[k]; else { delete state.periods[k]; ensurePeriod(k); }
-    save(); renderAll(); return;
+  if (b.id==='menu'){
+    if (window.matchMedia('(max-width:800px)').matches){ const o = $('#side').classList.toggle('open'); b.setAttribute('aria-expanded', String(o)); }
+    else { const c = document.querySelector('.shell').classList.toggle('collapsed'); b.setAttribute('aria-expanded', String(!c)); }
+    return;
   }
+  if (b.id==='btn-team-reset'){ state.team = {}; save(); renderView(); return; }
   if (b.dataset.tab){ state.tab = b.dataset.tab; save(); renderResults(); return; }
   if (b.id==='btn-var'){
     const name = ($('#var-name').value||'').trim() || `Variante ${state.variants.filter(v=>v.period===state.cur).length+1}`;
@@ -1094,6 +1119,17 @@ document.addEventListener('click', e=>{
     if (d.periods[k]) state.periods[k] = d.periods[k]; else { delete state.periods[k]; ensurePeriod(k); }
     save(); renderAll(); return;
   }
+});
+let resetArmed = false;
+document.addEventListener('input', e=>{
+  const t = e.target; if (!t.dataset || !t.dataset.team) return;
+  state.team = state.team || {}; state.team[t.dataset.team] = t.value; save();
+});
+document.addEventListener('change', e=>{
+  const t = e.target; if (t.id!=='team-logo' || !t.files || !t.files[0]) return;
+  const f = t.files[0];
+  if (f.size > 300000){ t.value=''; t.insertAdjacentHTML('afterend','<span class="note">Bild ist zu gross (max. 300 KB).</span>'); return; }
+  const rd = new FileReader(); rd.onload = ()=>{ state.team = state.team || {}; state.team.logo = rd.result; save(); renderView(); }; rd.readAsDataURL(f);
 });
 document.addEventListener('mousemove', e=>{
   const t = e.target.closest && e.target.closest('[data-tip]'), tip = $('#tip');
