@@ -117,6 +117,28 @@ table.kt td.cur{font-weight:700}
 hr.full{border:0;border-top:2px solid var(--line);margin:24px calc(-1 * max(20px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(20px, env(safe-area-inset-left, 0px)))}
 .welcome{display:flex;flex-direction:column;gap:12px;max-width:110ch}
 .welcome p{margin:0;font-size:.95rem}
+/* Sammelbericht */
+.rep{display:flex;flex-direction:column;gap:22px}
+.rep .page{display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:4px;padding:20px 22px;background:var(--panel)}
+.rep .rt{font:600 1.5rem var(--f-body);color:var(--ink)}
+.rep .rsub{margin:0;color:var(--muted)}
+.rep .rwarn{margin:0;padding:10px 12px;background:var(--warn-soft);border-left:4px solid var(--warn);font-size:.88rem}
+.rep .rh3{font:600 1.05rem var(--f-body);color:var(--head-row);margin-top:6px}
+.rep .hints{margin:0;padding-left:1.3rem;display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+.rep .rh{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--head-row);padding-bottom:6px}
+.rep .rh b{display:block;font:600 1.05rem var(--f-body);color:var(--head-row)}
+.rep .rh span{font-size:.8rem;color:var(--muted)}
+.rep .rsim{font:600 .72rem var(--f-body);letter-spacing:.06em;color:var(--warn)}
+table.scen td,table.scen th{border:1px solid var(--line);font-size:.8rem;vertical-align:top}
+table.scen td.base{background:var(--accent-soft);font-weight:600}
+@media print{
+  .top,.side,.no-print,#tip,body::before{display:none!important}
+  .shell{display:block} .main{padding:0}
+  body{background:#fff;color:#000}
+  .rep .page{border:0;padding:0;break-after:page}
+  .rep .page:last-child{break-after:auto}
+  table{font-size:9pt}
+}
 @media (max-width:800px){
   .shell{grid-template-columns:minmax(0,1fr)}
   .side{display:none;padding-top:0}
@@ -1125,10 +1147,195 @@ function p0Report(){
   ${tbl(['Kostenarten P0','MEUR'],[['Einsatzstoffe (40\'000 × 600 EUR)','24.00'],['Betriebsstoffe','2.00'],['Löhne und Gehälter','37.46'],['Personalnebenkosten','14.99'],['Pensionsrückstellungen','1.87'],['Einstellungen','0.98'],
     ['Abschreibungen','7.75'],['Sonstige fixe Kosten','3.25'],['Instandhaltung','5.00'],['Umweltabgabe','1.90'],['Nacharbeit','1.24'],['Lagerkosten','0.90'],['Werbung / Marktforschung','6.10'],['Transport','1.08'],{cls:'sum',c:['Summe','108.51']}])}`;
 }
+/* ---------- Sammelbericht (Simulation) im Aufbau der Spielberichte ---------- */
+const P0_SUM = {U:129, ebit:13.91, jue:6.52, ek:31.52, uek:43.37, bsum:86.77, prod:40000, s1:43000, ga:0, sold_:43000, d1:43000, unmet1:0, hkUnit:2059.2, fgEnd:9000, fgEndVal:18.62,
+  auslMA:0.9971, auslMach:0.9524, cashEnd:0.10, ekq:0.3633, rating:'BB', personal:55.30, matAuf:26.0, afa:7.75, sonst:19.46, uekInt:3.04, tax:4.35, ebt:10.87, dBest:-6.58,
+  recEnd:25.80, pensionEnd:11.87, av:42.25, geb:20, matEndVal:0, u1:129, ugA:0, u2:0, techG1:100, techG2:80, fertEnd:852, prodPerMA:50.02};
+const P1_IST_FULL = {...IST_P1, hkUnit:2172.46, fgEnd:0, fgEndVal:0, cashEnd:0.10, ekq:0.5995, rating:'BBB', dBest:-18.62, ebt:9.42, recEnd:27.26, pensionEnd:13.95, av:34.50, geb:19,
+  matEndVal:0, u1:136.30, ugA:10.80, u2:0, unmet1:6734, sold_:51000, techG1:102.66, techG2:80, auslMach:1.0};
+function prevSum(k){
+  if (k==='P1') return P0_SUM;
+  if (k==='P2') return {...cache.P1.r, ...P1_IST_FULL};
+  const pk = prevOf(k); return cache[pk] ? cache[pk].r : null;
+}
+const nv = (v,d=2) => (v===undefined || v===null || (typeof v==='number' && !isFinite(v))) ? '–' : (typeof v==='string' ? esc(v) : fmt(v,d));
+function repHead(code, title, k){
+  return `<div class="rh"><div><b>${code}: ${esc(title)}</b><span>Helvetic Print AG · Unternehmen 2</span></div><div>Periode ${k.slice(1)}</div></div><div class="rsim">SIMULATION · Schätzung, kein TOPSIM-Ergebnis</div>`;
+}
+function cmpTbl(rows, k){
+  const pk = prevOf(k);
+  return tbl(['', 'Einheit', 'Periode '+pk.slice(1), 'Periode '+k.slice(1)], rows.map(r => r.grp ? {cls:'sum', c:[esc(r.grp),'','','']} : [esc(r[0]), esc(r[1]), nv(r[2], r[4]), nv(r[3], r[4])]));
+}
+function costCenters(r, P, D){
+  const k1 = 1 + D.nk + P.pension, G = 1.0;
+  const pers = d => r.loehne[d]*k1 + (r.dept[d].hires*P.hireCost + r.dept[d].fires*P.fireCost)/1e3;
+  const fe = pers('fe') + r.feBer + 0.05*G;
+  const vt = pers('vt') + r.advTot + r.mafo + D.ci + r.transport + r.lagerFE + 0.05*G;
+  const fertSoz = sozialCost(r.dept.fert.fires, r.dept.fert.start, P);
+  const vw = pers('vw') + r.instVw + P.oneOff + 0.15*G + (r.sozial - fertSoz);
+  const total = r.matAuf + r.personal + r.afa + r.sonst;
+  const rest = total - r.hk - fe - vt - vw;
+  return {fe, vt, vw, rest, total};
+}
+function scenarioGrid(k){
+  const {start:S, par, dec} = cache[k];
+  const cps = [par.cP*0.984, par.cP, par.cP*1.016], nps = [[0.75,'tief'],[0.80,'mittel'],[0.85,'hoch']];
+  const cells = nps.map(([np,lab]) => cps.map(cp => simulate(clone(S), {...par, cP:cp, newProd:np}, dec)));
+  const all = cells.flat().map(x=>x.uek);
+  let h = `<div class="tw"><table class="scen"><thead><tr><th>Leistung neuer MA</th>${cps.map((cp,i)=>`<th>Konkurrenz Ø ${fmt(cp,0)} EUR → Nachfrage M1 ${fmt(cells[1][i].d1,0)}</th>`).join('')}</tr></thead><tbody>`;
+  nps.forEach(([np,lab],i)=>{ h += `<tr><td>${lab} (${fmt(np*100,0)} %)</td>${cells[i].map((x,j)=>`<td class="${i===1&&j===1?'base':''}">Fertigung ${fmt(x.prod,0)}<br>EBIT ${fmt(x.ebit,1)} · JÜ ${fmt(x.jue,1)}<br>ÜK ${fmt(x.uek,1)} · Lager ${fmt(x.fgEnd,0)}</td>`).join('')}</tr>`; });
+  h += `</tbody></table></div>`;
+  return {html:h, lo:Math.min(...all), hi:Math.max(...all)};
+}
+function sammelbericht(k){
+  const {start:S, r, par:P, dec:D} = cache[k];
+  const pv = prevSum(k) || {};
+  const pd = k==='P1' ? {price:3000, adv:6, vt1:100, feG1:35, prod:40000, hires:50, ga:0, mafo:true} : (state.periods[prevOf(k)]||{}).dec || {};
+  const cc = costCenters(r, P, D);
+  const scen = scenarioGrid(k);
+  const today = new Date().toLocaleDateString('de-CH');
+  // --- Hinweise
+  const H = [];
+  if (D.plan>0) H.push(Math.abs(r.planDev)>0.05 ? `<b>Planwert Markt 1 = ${fmt(D.plan,0)} weicht ${fmt(r.planDev*100,1)} % ab.</b> Erwartet sind ca. ${fmt(r.s1,0)} Stück in Markt 1. Empfehlung: Planwert auf ca. ${fmt(Math.round(r.s1/500)*500,0)} setzen.` : `<b>Planwert Markt 1 passt</b> (${fmt(D.plan,0)} geplant, ca. ${fmt(r.s1,0)} erwartet).`);
+  H.push(r.prod < D.prod-1 ? `<b>Die geplanten ${fmt(D.prod,0)} Stück werden nicht erreicht</b>, nur ca. ${fmt(r.prod,0)} (Engpass ${r.maxMach<r.maxStaff?'Anlagen':'Personal'}).` : `<b>Fertigung ${fmt(r.prod,0)} Stück erreichbar</b>${r.otUsed?`, aber nur mit Überstunden (${fmt(r.otMA,0)} MA-Äquivalente, Zusatzschicht ${fmt(r.otFix,2)} MEUR)`:''}. Neue Mitarbeitende: ${fmt(r.newShare*100,0)} % der Fertigung.`);
+  H.push(`<b>Überziehungskredit ca. ${fmt(r.uek,1)} MEUR</b> (Vorperiode ${nv(pv.uek,2)}). Investitionen ${fmt(r.invest,1)} MEUR, Personalaufwand ${fmt(r.personal,1)} MEUR. Eigenkapitalquote ca. ${fmt(r.ekq*100,0)} %, Rating-Tendenz ${r.rating}.`);
+  H.push(`<b>Betriebsergebnis ca. ${fmt(r.ebit,2)} MEUR</b> (Vorperiode ${nv(pv.ebit,2)}), Periodenüberschuss ca. ${fmt(r.jue,2)} MEUR (Vorperiode ${nv(pv.jue,2)}).`);
+  H.push(`<b>Lager Ende ${k}:</b> ca. ${fmt(r.matEnd,0)} Einheiten Einsatzstoffe und ${fmt(r.fgEnd,0)} fertige Geräte.`);
+  const other = r.warnings.filter(w=>!/Planwert Markt 1|Überstunden|Fertiglager|Materiallager|Eigenkapitalquote|Produktion gekürzt/.test(w[1]));
+  other.forEach(w=>H.push(`<b>${esc(w[1])}.</b> ${esc(w[2])}`));
+  let h = `<div class="rep" id="rep">`;
+  // --- Deckblatt
+  h += `<section class="page"><h2 class="rt">Sammelbericht Periode ${k.slice(1)} – Simulation</h2>
+    <p class="rsub">Helvetic Print AG (Unternehmen 2) · berechnet aus den Entscheiden ${k} · Stand ${today}</p>
+    <p class="rwarn"><b>Wichtig:</b> Dies ist keine TOPSIM-Auswertung, sondern eine Nachrechnung mit einem eigenen Modell. Es trifft den echten Bericht P1 auf ±1 % (EBIT 10.08 statt 10.07 MEUR, Bilanzsumme exakt). Kosten, Kapazität, Personal, Liquidität und Bilanz sind direkt aus den Entscheiden gerechnet. Geschätzt sind die Nachfrage (abhängig von der Konkurrenz), die Einarbeitung und die übrigen Indizes.</p>
+    <h3 class="rh3">Die wichtigsten Hinweise</h3><ol class="hints">${H.map(x=>`<li>${x}</li>`).join('')}</ol>
+    <h3 class="rh3">Szenarien</h3><p class="note">Spalten: Nachfrage Markt 1 je nach Preisen der Konkurrenz (±1.6 %). Zeilen: Leistung der neuen Mitarbeitenden. Basisfall hervorgehoben.</p>${scen.html}
+    <h3 class="rh3">Liquiditätsbedarf für Moodle</h3><p>Im Basisfall braucht ihr Ende ${k} einen Überziehungskredit von ca. <b>${fmt(r.uek,1)} MEUR</b> (Spannweite der Szenarien ${fmt(scen.lo,1)}–${fmt(scen.hi,1)} MEUR). Mit Reserve meldet ihr ca. <b>${fmt(Math.ceil(scen.hi),0)} MEUR</b>.</p>
+    <h3 class="rh3">Annahmen</h3><ul class="note">
+      <li>Nachfrage Markt 1: Marktbasis ${fmt(r.base,0)} Stk je Unternehmen, Preiselastizität 4.15 aus P1, ausserhalb ±5 % stärker (HB 3.1.3). Konkurrenz Ø Preis ${fmt(P.cP,0)} EUR, Werbung ${fmt(P.cW,2)} MEUR, Vertrieb ${fmt(P.cV,1)} MA, Technologie ${fmt(P.cT,2)}.</li>
+      <li>Einkauf: ${D.supplier===0?'Altvertrag 600 EUR, sofort bezahlt':`Lieferant ${D.supplier}, Staffelpreis ${fmt(r.price,0)} EUR für die ganze Bestellmenge, Zahlungsquote ${fmt(P.payQuota[D.supplier]*100,0)} %`}.</li>
+      <li>Fertigung: Fluktuation ${fmt(P.fl.fert*100,1)} %, Fehlzeiten ${fmt(P.fehl*100,1)} %, neue MA leisten ${fmt(P.newProd*100,0)} %, Überstunden max. ${fmt(P.otStaff*100,0)} % Personal / ${fmt(P.otMach*100,0)} % Anlagen.</li>
+      <li>Einkauf- und Verwaltungspersonal wachsen mit dem Umsatz (aus P0→P1). Löhne, Preise und Zinsen laut Wirtschaftsprognose. Steuern ${fmt(P.tax*100,0)} %. Aktienkurs, Kundenzufriedenheit und Bekanntheit werden nicht geschätzt.</li></ul></section>`;
+  // --- Wirtschaftsprognose
+  h += `<section class="page">${repHead('WP','Rahmendaten der Periode',k)}<div class="tw"><table><thead><tr><th>Grösse</th><th class="n">Wert</th><th>Quelle</th></tr></thead><tbody>
+    ${RD_ROWS.map(([key,label,unit,d,kind])=>{ const v=getPath(P,key); return `<tr><td>${esc(label)}</td><td class="n">${kind==='pct'?fmt(v*100,d)+' %':fmt(v,d)+(unit?' '+esc(unit):'')}</td><td class="note">${esc(rdSource(key,k))}</td></tr>`; }).join('')}
+    <tr><td>Konkurrenz Ø Preis / Werbung / Vertrieb / Technologie</td><td class="n">${fmt(P.cP,0)} / ${fmt(P.cW,2)} / ${fmt(P.cV,1)} / ${fmt(P.cT,2)}</td><td class="note">${COMP_HIST[k]?'Marktforschungsbericht':'vom Modell aus P0/P1 fortgeschrieben'}</td></tr>
+    <tr><td>Marktwachstum Markt 1</td><td class="n">${fmt(P.growth*100,1)} %</td><td class="note">Wirtschaftsprognose</td></tr></tbody></table></div></section>`;
+  // --- TNB01
+  h += `<section class="page">${repHead('TNB01','Executive Summary',k)}${cmpTbl([
+    {grp:'Allgemein'},['Umsatz gesamt','MEUR',pv.U,r.U,2],['Periodenüberschuss','MEUR',pv.jue,r.jue,2],
+    {grp:'Markt'},['Absatz gesamt','Stk',pv.sold_,r.sold_,0],['Tatsächlicher Absatz Markt 1','Stk',pv.s1,r.s1,0],['Geplanter Absatz Markt 1','Stk',pd.plan,D.plan,0],['Grossabnehmer','Stk',pv.ga,r.ga,0],['Absatz Markt 2','Stk',pv.s2,r.s2,0],
+    {grp:'Fertigung'},['Geplante Fertigungsmenge','Stk',pd.prod,D.prod,0],['Tatsächliche Fertigungsmenge','Stk',pv.prod,r.prod,0],['Lagerendbestand Fertigprodukte','Stk',pv.fgEnd,r.fgEnd,0],['Auslastung Mitarbeitende','%',pv.auslMA!=null?pv.auslMA*100:null,r.auslMA*100,2],['Auslastung Anlagen','%',pv.auslMach!=null?pv.auslMach*100:null,r.auslMach*100,2],
+    {grp:'Kostenstruktur'},['Herstellkosten je Stück','EUR',pv.hkUnit,r.hkUnit,2],
+    {grp:'Erfolg'},['Betriebsergebnis','MEUR',pv.ebit,r.ebit,2],['Eigenkapital','MEUR',pv.ek,r.ek,2],['Umsatzrendite','%',pv.U?pv.jue/pv.U*100:null,r.jue/r.U*100,2],
+    {grp:'Finanzen'},['Kassenendbestand','MEUR',pv.cashEnd,r.cashEnd,2],['Überziehungskredit','MEUR',pv.uek,r.uek,2],['Fremdkapitalquote','%',pv.ekq!=null?(1-pv.ekq)*100:null,(1-r.ekq)*100,2],['Rating','Klasse',pv.rating,r.rating]],k)}</section>`;
+  // --- TNB02
+  h += `<section class="page">${repHead('TNB02','Marktforschung Markt 1',k)}${tbl(['','Helvetic Print','Ø Konkurrenz (5)'],[
+    ['Preis (EUR)', fmt(D.price,0), fmt(P.cP,0)],['Abweichung vom Ø Markt (%)', fmt((D.price/r.pAvg-1)*100,2), fmt((P.cP/r.pAvg-1)*100,2)],['Technologieindex', fmt(r.tech,2), fmt(P.cT,2)],
+    ['Werbung (MEUR)', fmt(D.adv,2), fmt(P.cW,2)],['Vertriebspersonal', fmt(D.vt1,0), fmt(P.cV,1)]])}
+    ${tbl(['Absatz Markt 1','Stk / MEUR'],[['Potentieller Absatz', fmt(r.d1,0)],['Tatsächlicher Absatz', fmt(r.s1,0)],['Nicht gedeckte Nachfrage', fmt(r.unmet1,0)],['Umsatz Markt 1 (MEUR)', fmt(r.u1,2)],
+    ['Grossabnehmer', fmt(r.ga,0)+' Stk · '+fmt(r.ugA,2)+' MEUR'],['Markt 2', D.m2? fmt(r.s2,0)+' Stk · '+fmt(r.u2,2)+' MEUR' : 'nicht aktiv']])}</section>`;
+  // --- TNB03
+  h += `<section class="page">${repHead('TNB03','Fertigungsbericht',k)}${tbl(['Anlage','Kapazität','Restlaufzeit','Abschreibung','Restbuchwert Ende','Fixkosten','Umweltindex'],
+    r.machines.map(m=>{ const e=r.machEnd.find(x=>x.id===m.id); return [m.id+(m.isNew?' (neu)':''), fmt(m.cap,0), fmt(e.rl,0), fmt(m.rl>0?m.afa:0,2), fmt(e.rbw,2), fmt(m.fix,2), fmt(m.ui,0)]; })
+    .concat([{cls:'sum',c:['Summe',fmt(r.machCap,0),'',fmt(r.afaMach,2),fmt(r.machEnd.reduce((a,m)=>a+m.rbw,0),2),fmt(r.machFix,2),'Ø '+fmt(r.uiAvg,1)]}]))}
+    ${r.sold.length?`<p class="note">Desinvestition: ${r.sold.map(m=>m.id).join(', ')} · Erlös ${fmt(r.desinvErl,2)} MEUR · Buchverlust ${fmt(r.aoAfa,2)} MEUR.</p>`:''}
+    <div class="two">${tbl(['Auslastung Anlagen',''],[['Geplante Fertigung',fmt(D.prod,0)],['Kapazität ohne Überstunden',fmt(r.machCap,0)],['Kapazität mit Überstunden',fmt(r.machCap*(1+P.otMach),0)],['Tatsächliche Fertigung',fmt(r.prod,0)],['Auslastung Anlagen',fmt(r.auslMach*100,2)+' %']])}
+    ${tbl(['Fertigungspersonal',''],[['Personalbestand',fmt(r.fertEnd,0)],['− Fehlzeiten',fmt(r.fehl,1)],['= Einsetzbares Personal',fmt(r.einsetzbar,1)],['Neue Mitarbeitende',fmt(r.newShare*100,2)+' %'],['Einarbeitungsindex',fmt(r.einarb,3)],['Produktivitätsindex I',fmt(r.prodI,3)],
+      ['Kapazität je MA',fmt(r.prodPerMA,2)+' Stk'],['Eingesetztes Personal inkl. Überstunden',fmt(r.needMA,1)],['Auslastung Mitarbeitende',fmt(r.auslMA*100,2)+' %']])}</div></section>`;
+  // --- TNB04
+  h += `<section class="page">${repHead('TNB04','Forschung & Entwicklung',k)}${tbl(['','F&E-Personal','Personalkosten (MEUR)','Technologieindex','Ökologie-Budget (MEUR)'],[
+    ['Copy Classic Gen. 1', fmt(D.feG1,0), fmt(D.feG1*P.wage.fe/1e3,2), fmt(r.techG1,2), fmt(D.oekoG1||0,2)],['Copy Classic Gen. 2', fmt(D.feG2||0,0), fmt((D.feG2||0)*P.wage.fe/1e3,2), fmt(r.techG2,2), fmt(D.oekoG2||0,2)]])}
+    <p class="note">Technologiezuwachs geschätzt: Gen. 1 aus P1 (38 MA → +2.66), Gen. 2 aus der Prognose (170–200 Personenjahre bis Index 100). Ökologieindex wird nicht geschätzt.</p></section>`;
+  // --- TNB05
+  const fgStart = r.fgWrite ? 0 : S.fgStock, fgStartVal = r.fgWrite ? 0 : S.fgValue;
+  h += `<section class="page">${repHead('TNB05','Lager',k)}${tbl(['Einsatzstoffe','Stk','EUR/Stk','MEUR'],[
+    ['Anfangsbestand', fmt(S.matStock,0), nv(S.matStock?S.matValue/S.matStock*1e6:null,2), fmt(S.matValue,2)],['+ Zugang vom Lieferanten', fmt(r.order,0), fmt(r.price,2), fmt(r.order*r.price/1e6,2)],
+    ['+ Nachlieferung', fmt(r.short,0), fmt(r.shortPrice,2), fmt(r.short*r.shortPrice/1e6,2)],['− Abgang an Fertigung', fmt(r.matNeed,0), '', fmt(r.matUsedVal,2)],{cls:'sum',c:['= Endbestand', fmt(r.matEnd,0), '', fmt(r.matEndVal,2)]}])}
+    ${tbl(['Fertigprodukte','Stk','EUR/Stk','MEUR'],[['Anfangsbestand', fmt(fgStart,0), nv(fgStart?fgStartVal/fgStart*1e6:null,2), fmt(fgStartVal,2)],['+ Zugang von Fertigung', fmt(r.prod,0), fmt(r.hkUnit,2), fmt(r.hk,2)],
+    ['− Abgang an Vertrieb', fmt(r.sold_,0), fmt(r.avgFG*1e6,2), fmt(r.cogs,2)],{cls:'sum',c:['= Endbestand', fmt(r.fgEnd,0), fmt(r.avgFG*1e6,2), fmt(r.fgEndVal,2)]}])}
+    <p class="note">Lagerkosten: Einsatzstoffe ${fmt(r.lagerM,2)} MEUR, Fertigprodukte ${fmt(r.lagerFE,2)} MEUR.</p></section>`;
+  // --- TNB06
+  const DN = {ek:'Einkauf', vw:'Verwaltung', fert:'Fertigung', fe:'F&E', vt:'Vertrieb'}, DK = ['ek','vw','fert','fe','vt'];
+  const sumD = f => DK.reduce((a,d)=>a+f(d),0);
+  h += `<section class="page">${repHead('TNB06','Personal',k)}${tbl(['','Einkauf','Verwaltung','Fertigung','F&E','Vertrieb','Summe'],[
+    ['Anfangsbestand'].concat(DK.map(d=>fmt(r.dept[d].start,0))).concat([fmt(sumD(d=>r.dept[d].start),0)]),
+    ['+ Einstellungen'].concat(DK.map(d=>fmt(r.dept[d].hires,0))).concat([fmt(sumD(d=>r.dept[d].hires),0)]),
+    ['− Entlassungen'].concat(DK.map(d=>fmt(r.dept[d].fires,0))).concat([fmt(sumD(d=>r.dept[d].fires),0)]),
+    ['− Fluktuation'].concat(DK.map(d=>fmt(r.dept[d].fl,0))).concat([fmt(sumD(d=>r.dept[d].fl),0)]),
+    {cls:'sum',c:['= Endbestand'].concat(DK.map(d=>fmt(r.dept[d].end,0))).concat([fmt(sumD(d=>r.dept[d].end),0)])},
+    ['Löhne/Gehälter (MEUR)'].concat(DK.map(d=>fmt(r.loehne[d],2))).concat([fmt(r.sumL,2)]),
+    ['Einstellung/Entlassung (MEUR)'].concat(DK.map(d=>fmt((r.dept[d].hires*P.hireCost+r.dept[d].fires*P.fireCost)/1e3,2))).concat([fmt(r.hireCost+r.fireCost,2)]),
+    ['Personalnebenkosten (MEUR)'].concat(DK.map(d=>fmt(r.loehne[d]*D.nk,2))).concat([fmt(r.nk,2)]),
+    ['Pensionsrückstellungen (MEUR)'].concat(DK.map(d=>fmt(r.loehne[d]*P.pension,2))).concat([fmt(r.pens,2)])])}
+    <p class="note">Löhne der Fertigung inkl. Überstunden (${fmt(r.otCost,2)} MEUR). Sozialplankosten ${fmt(r.sozial,2)} MEUR. Personalnebenkosten ${fmt(D.nk*100,0)} %.</p></section>`;
+  // --- TNB07
+  h += `<section class="page">${repHead('TNB07','Kostenartenrechnung (MEUR)',k)}${tbl(['Kostenart','MEUR'],[
+    ['Einsatzstoffe', fmt(r.matUsedVal,2)],['Betriebsstoffe', fmt(r.bs,2)],['Löhne/Gehälter (mit Überstunden)', fmt(r.sumL,2)],['Einstellungen/Entlassungen/Training', fmt(r.hireCost+r.fireCost+r.trainCost,2)],['Kosten Sozialplan', fmt(r.sozial,2)],
+    ['Personalnebenkosten', fmt(r.nk,2)],['Pensionsrückstellungen', fmt(r.pens,2)],['Abschreibung Gebäude', fmt(1,2)],['Abschreibung Fertigungsanlagen (inkl. Verkauf)', fmt(r.afaMach+r.aoAfa,2)],['Abschreibung Fertigerzeugnisse', fmt(r.fgWrite,2)],
+    ['Sonstige fixe Kosten', fmt(r.machFix+r.otFix,2)],['Instandhaltung/Rationalisierung/ERP', fmt(r.instM+r.instVw+D.ratA+D.ratB+P.oneOff,2)],['Prozessoptimierung', fmt(D.prozOpt,2)],['Umweltabgabe', fmt(r.umwelt,2)],['Nacharbeit/Ausschuss', fmt(r.nach,2)],
+    ['Lagerkosten', fmt(r.lagerFE+r.lagerM,2)],['Werbung/Marktforschung/Corporate Identity', fmt(r.advTot+r.mafo+D.ci,2)],['Sonstige Kosten F&E (Beratung)', fmt(r.feBer,2)],['Transportkosten', fmt(r.transport,2)],{cls:'sum',c:['Summe', fmt(cc.total,2)]}])}</section>`;
+  // --- TNB09 Kostenträger
+  h += `<section class="page">${repHead('TNB09','Kostenträgerrechnung',k)}${tbl(['','Gesamt (MEUR)','Je Stück (EUR)'],[
+    ['Einkauf (Material, Betriebsstoffe, Kostenstelle)', fmt(r.hkEinkauf,2), fmt(r.prod?r.hkEinkauf/r.prod*1e6:0,2)],['Fertigung (Personal, Anlagen, Umwelt, Nacharbeit)', fmt(r.hkFert,2), fmt(r.prod?r.hkFert/r.prod*1e6:0,2)],
+    {cls:'sum',c:['= Herstellkosten der Fertigung', fmt(r.hk,2), fmt(r.hkUnit,2)]},['Herstellkosten des Umsatzes', fmt(r.cogs,2), fmt(r.sold_?r.cogs/r.sold_*1e6:0,2)],
+    ['+ F&E', fmt(cc.fe,2), fmt(cc.fe/r.sold_*1e6,2)],['+ Vertrieb', fmt(cc.vt,2), fmt(cc.vt/r.sold_*1e6,2)],['+ Verwaltung', fmt(cc.vw,2), fmt(cc.vw/r.sold_*1e6,2)],['+ Übrige', fmt(cc.rest,2), fmt(cc.rest/r.sold_*1e6,2)],
+    {cls:'res',c:['= Selbstkosten', fmt(r.cogs+cc.fe+cc.vt+cc.vw+cc.rest,2), fmt((r.cogs+cc.fe+cc.vt+cc.vw+cc.rest)/r.sold_*1e6,2)]}])}</section>`;
+  // --- TNB10 DB
+  const ch = [['Markt 1', r.s1, r.u1, r.s1*P.tr1/1e6],['Grossabnehmer', r.ga, r.ugA, 0],['Markt 2', r.s2, r.u2, r.s2*P.tr2/1e6]].filter(c=>c[1]>0);
+  const db = ch.map(([n,q,u,t])=>({n,q,u,t,hk:q*r.avgFG, d:u-q*r.avgFG-t}));
+  const dbSum = db.reduce((a,x)=>a+x.d,0);
+  h += `<section class="page">${repHead('TNB10','Deckungsbeitragsrechnung',k)}${tbl(['','Stk','Umsatz','− Herstellkosten des Umsatzes','− Transport','= Deckungsbeitrag','DB je Stück (EUR)'],
+    db.map(x=>[x.n, fmt(x.q,0), fmt(x.u,2), fmt(x.hk,2), fmt(x.t,2), fmt(x.d,2), fmt(x.d/x.q*1e6,2)]).concat([{cls:'sum',c:['Summe', fmt(r.sold_,0), fmt(r.U,2), fmt(r.cogs,2), fmt(r.transport,2), fmt(dbSum,2), fmt(dbSum/r.sold_*1e6,2)]}]))}
+    ${tbl(['Vom Deckungsbeitrag zum Betriebsergebnis','MEUR'],[['Deckungsbeitrag nach Herstellkosten', fmt(dbSum,2)],['− F&E', fmt(cc.fe,2)],['− Vertrieb (ohne Transport)', fmt(cc.vt-r.transport,2)],['− Verwaltung', fmt(cc.vw,2)],['− Übrige', fmt(cc.rest,2)],
+      {cls:'res',c:['= Betriebsergebnis', fmt(dbSum-cc.fe-(cc.vt-r.transport)-cc.vw-cc.rest,2)]}])}</section>`;
+  // --- TNB11 GuV
+  h += `<section class="page">${repHead('TNB11','Gewinn- und Verlustrechnung',k)}<div class="two">${tbl(['Gesamtkostenverfahren','MEUR','% Umsatz'],[
+    ['Umsatzerlöse', fmt(r.U,2), '100.00'],['± Bestandsveränderung Fertigerzeugnisse', fmt(r.dBest,2), fmt(r.dBest/r.U*100,2)],['− Materialaufwand', fmt(r.matAuf,2), fmt(r.matAuf/r.U*100,2)],['− Personalaufwand', fmt(r.personal,2), fmt(r.personal/r.U*100,2)],
+    ['− Abschreibungen', fmt(r.afa,2), fmt(r.afa/r.U*100,2)],['− Sonstiger Aufwand', fmt(r.sonst,2), fmt(r.sonst/r.U*100,2)],{cls:'res',c:['= Betriebsergebnis', fmt(r.ebit,2), fmt(r.ebit/r.U*100,2)]},
+    ['+ Erträge aus Wertpapieren', fmt(r.wpInt,2), ''],['− Zinsen Kredite', fmt(r.kkInt+r.lkInt,2), ''],['− Zinsen Überziehungskredit', fmt(r.uekInt,2), ''],{cls:'sum',c:['= Gewinn vor Steuern', fmt(r.ebt,2), fmt(r.ebt/r.U*100,2)]},
+    ['− Steuern', fmt(r.tax,2), ''],{cls:'res',c:['= Periodenüberschuss', fmt(r.jue,2), fmt(r.jue/r.U*100,2)]}])}
+    ${tbl(['Umsatzkostenverfahren','MEUR'],[['Umsatzerlöse', fmt(r.U,2)],['− Herstellkosten des Umsatzes', fmt(r.cogs,2)],['− F&E', fmt(cc.fe,2)],['− Vertrieb', fmt(cc.vt,2)],['− Verwaltung', fmt(cc.vw,2)],['− Übrige', fmt(cc.rest,2)],{cls:'res',c:['= Betriebsergebnis', fmt(r.ebit,2)]},
+      {cls:'sum',c:['Ergebnisverwendung','']},['Gewinnvortrag Vorperiode', fmt(S.vortrag,2)],['− Dividende', fmt(r.div,2)],['+ Periodenüberschuss', fmt(r.jue,2)],{cls:'res',c:['= Gewinnvortrag', fmt(S.vortrag-r.div+r.jue,2)]}])}</div></section>`;
+  // --- TNB12 Liquidität
+  h += `<section class="page">${repHead('TNB12','Liquiditätsrechnung',k)}${tabContent('liq', k, S, r, state.periods[k])}</section>`;
+  // --- TNB14 Cashflow
+  const tradCF = r.jue + r.afa + r.pens;
+  const dMat = S.matValue - r.matEndVal, dFG = (S.fgValue - r.fgWrite) - r.fgEndVal, dRec = S.receivables - r.recEnd, dPay = r.payablesEnd - S.payables;
+  const opCF = tradCF + dMat + dFG + dRec + dPay, invCF = -r.invest + r.desinvErl;
+  const finCF = (r.uek + D.kk + r.lkBal) - (S.uek + S.kk + (S.lks||[]).reduce((a,l)=>a+l.bal,0)) - r.div + (S.wp - D.wp);
+  h += `<section class="page">${repHead('TNB14','Cashflow Statement',k)}${tbl(['','MEUR'],[['Periodenüberschuss', fmt(r.jue,2)],['+ Abschreibungen', fmt(r.afa,2)],['+ Erhöhung Pensionsrückstellungen', fmt(r.pens,2)],{cls:'sum',c:['= Traditioneller Cashflow', fmt(tradCF,2)]},
+    ['± Vorräte Materialien', fmt(dMat,2)],['± Vorräte Fertigerzeugnisse', fmt(dFG,2)],['± Forderungen', fmt(dRec,2)],['± Verbindlichkeiten Lieferanten', fmt(dPay,2)],{cls:'sum',c:['A. Operativer Cashflow', fmt(opCF,2)]},
+    ['Investitionen in Anlagen', fmt(-r.invest,2)],['Verkauf von Anlagen', fmt(r.desinvErl,2)],{cls:'sum',c:['B. Cashflow aus Investitionen', fmt(invCF,2)]},
+    ['± Bankverbindlichkeiten', fmt(finCF + r.div - (S.wp - D.wp),2)],['− Dividende', fmt(r.div,2)],['± Wertpapiere', fmt(S.wp - D.wp,2)],{cls:'sum',c:['C. Cashflow aus Finanzierung', fmt(finCF,2)]},
+    {cls:'res',c:['D. Veränderung Kasse (A+B+C)', fmt(opCF+invCF+finCF,2)]},['Free Cashflow (A+B)', fmt(opCF+invCF,2)]])}</section>`;
+  // --- TNB15 Bilanz
+  h += `<section class="page">${repHead('TNB15','Bilanz',k)}${tabContent('bilanz', k, S, r, state.periods[k])}</section>`;
+  // --- TNB18 Kennzahlen
+  const ekPrev = FIX_EQ + S.vortrag;
+  h += `<section class="page">${repHead('TNB18','Wertorientierte Kennzahlen',k)}${cmpTbl([
+    ['Eigenkapital','MEUR',pv.ek,r.ek,2],['Eigenkapitalquote','%',pv.ekq!=null?pv.ekq*100:null,r.ekq*100,2],['Eigenkapitalrendite (JÜ / EK Vorperiode)','%',null,r.jue/ekPrev*100,2],
+    ['Fremdkapitalquote','%',pv.ekq!=null?(1-pv.ekq)*100:null,(1-r.ekq)*100,2],['EBIT','MEUR',pv.ebit,r.ebit,2],['EBITDA','MEUR',pv.ebit!=null&&pv.afa!=null?pv.ebit+pv.afa:null,r.ebit+r.afa,2],
+    ['EBITDA-Marge','%',pv.ebit!=null&&pv.afa!=null&&pv.U?(pv.ebit+pv.afa)/pv.U*100:null,(r.ebit+r.afa)/r.U*100,2],['Umsatzrendite','%',pv.U?pv.jue/pv.U*100:null,r.jue/r.U*100,2],['Free Cashflow','MEUR',null,opCF+invCF,2]],k)}</section>`;
+  // --- TNB19 Entscheidungsprotokoll
+  const prot = [['Preis Markt 1','EUR','price',0],['Werbung Markt 1','MEUR','adv',2],['Vertriebspersonal Markt 1','MA','vt1',0],['Aktiv auf Markt 2','','m2','b'],['Preis Markt 2','FCU','p2',0],['Vertriebspersonal Markt 2','MA','vt2',0],
+    ['Corporate Identity','MEUR','ci',2],['Marktforschungsbericht','','mafo','b'],['Grossabnehmer','Stk','ga',0],['F&E-Personal Gen. 1','MA','feG1',0],['F&E-Personal Gen. 2','MA','feG2',0],['Ökologie Gen. 1','MEUR','oekoG1',2],['Ökologie Gen. 2','MEUR','oekoG2',2],
+    ['Lieferant','','supplier','s'],['Bestellmenge','Stk','order',0],['Fertigungsmenge','Stk','prod',0],['Neue Anlagen Typ A','Stk','buyA',0],['Neue Anlagen Typ B','Stk','buyB',0],['Desinvestition','','sell','l'],
+    ['Einstellungen Fertigung','MA','hires',0],['Entlassungen Fertigung','MA','fires',0],['Planwert Markt 1','Stk','plan',0],['Planwert Markt 2','Stk','plan2',0]].filter(([_,__,f])=>availIn(f,k));
+  const pf = (o,f,d) => { const v=o[f]; if (v===undefined) return '–'; if (d==='b') return v?'Ja':'Nein'; if (d==='l') return (v&&v.length)?v.join(', '):'–'; if (d==='s') return v===0?'Altvertrag':'Lieferant '+v; return fmt(v,d); };
+  h += `<section class="page">${repHead('TNB19','Entscheidungsprotokoll',k)}${tbl(['Entscheid','Einheit','Periode '+prevOf(k).slice(1),'Periode '+k.slice(1)], prot.map(([l,u,f,d])=>[esc(l), esc(u), pf(pd,f,d), pf(D,f,d)]))}</section>`;
+  h += `</div>`;
+  return h;
+}
 function viewReports(){
   const k = state.cur;
   if (k==='P0') return `<div class="vh"><h1>Berichtswesen</h1><p>Periode 0 · Ist aus dem Sammelbericht</p></div>` + p0Report();
-  return `<div class="vh"><h1>Berichtswesen</h1><p>Periode ${k.slice(1)} · ${k==='P1'?'Modell, Vergleich mit Ist im Tab «Plan gegen Ist»':'Simulation'}</p></div><div class="results" id="results"></div>`;
+  const mode = state.repMode || 'einzel';
+  const head = `<div class="vh no-print"><h1>Berichtswesen</h1><p>Periode ${k.slice(1)} · ${k==='P1'?'Modell, Vergleich mit Ist im Tab «Plan gegen Ist»':'Simulation'}</p></div>
+    <div class="row-actions no-print"><button class="btn ${mode==='einzel'?'primary':''}" data-rep="einzel">Einzelberichte</button><button class="btn ${mode==='sammel'?'primary':''}" data-rep="sammel">Sammelbericht (Simulation)</button>
+    ${mode==='sammel'?`<button class="btn" id="btn-print">Drucken / als PDF speichern</button><span class="note" id="print-msg"></span>`:''}</div>`;
+  if (mode==='sammel') return head + sammelbericht(k);
+  return head + `<div class="results" id="results"></div>`;
 }
 
 /* ---------- Ansicht: Entscheidungen ---------- */
@@ -1196,6 +1403,13 @@ document.addEventListener('click', e=>{
     return;
   }
   if (b.id==='btn-team-reset'){ state.team = {}; save(); renderView(); return; }
+  if (b.dataset.rep){ state.repMode = b.dataset.rep; save(); renderView(); return; }
+  if (b.id==='btn-print'){
+    let ok = true; try { window.print(); } catch(err){ ok = false; }
+    const inFrame = window.self !== window.top;
+    $('#print-msg').innerHTML = inFrame || !ok ? 'Hier ist Drucken gesperrt. Auf <a href="https://raphaelrua.github.io/Helvetic-Print-Simulator/" target="_blank" rel="noopener">der GitHub-Seite</a> öffnen und dort drucken (Ziel: «Als PDF speichern»).' : 'Im Druckdialog «Als PDF speichern» wählen.';
+    return;
+  }
   if (b.dataset.tab){ state.tab = b.dataset.tab; save(); renderResults(); return; }
   if (b.id==='btn-var'){
     const name = ($('#var-name').value||'').trim() || `Variante ${state.variants.filter(v=>v.period===state.cur).length+1}`;
