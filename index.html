@@ -552,20 +552,35 @@ const DEC_P2_ORIG = {price:3010, adv:6.5, vt1:110, ci:0, mafo:true, plan:59000, 
   feG1:38, feG2:70, oekoG1:0, oekoG2:1.0, wert:0, product:'G1', supplier:2, order:70001, prod:62000, buyA:1, buyB:1, sell:['A1','A2'], hires:580, fires:0,
   training:0, prozOpt:0, ratA:0, ratB:0, nk:0.40, kk:0, lk:0, wp:0, div:0};
 // Optimiert über Fertigung, Einstellungen und Anlagen (Bewertung P2 + P3, siehe Variantenvergleich)
-const DEC_P2 = {...DEC_P2_ORIG, plan:46500, prod:56000, buyA:0, buyB:1, sell:['A1'], hires:440};
+const DEC_P2 = {...DEC_P2_ORIG, plan:48500, prod:58000, buyA:0, buyB:1, sell:['A1'], hires:500};
 const IST_P1 = {s1:47000, ga:4000, U:147.10, prod:42000, hkUnit:2172.46, personal:60.92, matAuf:27.30, afa:7.75, sonst:22.44, ebit:10.07, uekInt:0.65, tax:3.86, jue:5.56, uek:10.83, ek:37.08, bsum:61.86, d1:53734, fertEnd:851, prodPerMA:49.08, auslMA:1.0696};
 
 /* ---------- Zustand ---------- */
 const PERIODS = ['P0','P1','P2','P3','P4','P5','P6','P7'];
+/* Konkurrenz (Ø der fünf anderen Unternehmen), vom Modell bestimmt, nicht verstellbar.
+   P0 und P1: Marktforschungsberichte. Ab P2 fortgeschrieben:
+   - Preis: steigt mit 0.93 × Inflation (P0→P1: +1.86 % bei 2.0 % Inflation)
+   - Werbung und Vertrieb: halbe Veränderung der Vorperiode (Trend flacht ab)
+   - Technologie: gleiche Zunahme wie in der Vorperiode (F&E-Personal bleibt etwa gleich) */
+const COMP_HIST = {P0:{cP:3000, cW:6.0, cV:100, cT:100}, P1:{cP:3055.8, cW:6.9, cV:105.6, cT:103.04}};
+const INFL = {P1:0.02, P2:0.03};      // Wirtschaftsprognosen; fehlt eine Angabe, gilt die Vorperiode
+const GROWTH = {P1:0, P2:-0.01};      // Marktwachstum Markt 1: P1 in der Basis enthalten, P2 «stabil, leichte Einbussen»
+function inflOf(k){ for (let i=+k.slice(1); i>=1; i--){ if (INFL['P'+i]!==undefined) return INFL['P'+i]; } return 0.02; }
+function compFor(k){
+  if (COMP_HIST[k]) return COMP_HIST[k];
+  const i = +k.slice(1), a = compFor('P'+(i-1)), b = compFor('P'+(i-2));
+  return {cP: a.cP*(1+0.93*inflOf(k)), cW: a.cW + 0.5*(a.cW-b.cW), cV: a.cV + 0.5*(a.cV-b.cV), cT: a.cT + (a.cT-b.cT)};
+}
+function effPar(k, par){ return {...par, ...compFor(k), growth: GROWTH[k]!==undefined ? GROWTH[k] : 0, adj:0, redis:0}; }
 // Ist-Kennzahlen aus den TOPSIM-Berichten (Infohub, Sammelberichte P0 und P1)
 const IST_KPI = {
   P0:{aktie:186.44, U:129.00, ur:0.0506, jue:6.52, ek:31.52, div:0, cumDiv:0, fkq:0.6367, kz:69.97, pq:100, bek:49.25, tech:100.00, sold_:43000, ebit:13.91, uek:43.37, rating:'BB', prod:40000, s1:43000, ga:0},
   P1:{aktie:236.18, U:147.10, ur:0.0378, jue:5.56, ek:37.08, div:0, cumDiv:0, fkq:0.4005, kz:72.63, pq:100, bek:49.04, tech:102.66, sold_:51000, ebit:10.07, uek:10.83, rating:'BBB', prod:42000, s1:47000, ga:4000}
 };
-const STORE_KEY = 'hp-sim-v2';
+const STORE_KEY = 'hp-sim-v3';
 let state = null;
 function variantOf(period, name, start, par, dec){
-  const r = simulate(clone(start), par, clone(dec));
+  const r = simulate(clone(start), effPar(period, par), clone(dec));
   return {period, name, dec:clone(dec), par:clone(par), kpi:{sold_:r.sold_, U:r.U, ebit:r.ebit, jue:r.jue, uek:r.uek, ekq:r.ekq, hkUnit:r.hkUnit}};
 }
 function defaultState(){
@@ -607,8 +622,9 @@ function runAll(){
     if (pnum(k)>=2 && p.dec.supplier===0) p.dec.supplier = 2;
     const NEUTRAL = {ci:0, m2:false, adv2:0, vt2:0, feG2:0, oekoG1:0, oekoG2:0, supplier:0, order:0, buyB:0, wert:0, training:0, prozOpt:0, ratA:0, ratB:0, nk:0.40, wp:0, div:0, product:'G1', kk:0, lk:0};
     const dec = {...p.dec}; for (const f in NEUTRAL) if (!availIn(f, k)) dec[f] = NEUTRAL[f];
-    const r = simulate(start, p.par, dec);
-    cache[k] = {start, r};
+    const par = effPar(k, p.par);
+    const r = simulate(start, par, dec);
+    cache[k] = {start, r, par, dec};
     start = clone(r.end);
     // eingetragene Ist-Werte überschreiben den Startzustand der nächsten Periode
     if (k!=='P1') for (const [f] of IST_START_FIELDS){ const v = p.ist && p.ist['start_'+f]; if (v!==undefined && v!=='' && isFinite(v)) setPath(start, f, +v); }
@@ -639,14 +655,8 @@ const DEC_GROUPS = [
     ['kk','Kurzfristiger Kredit (ab P4)','MEUR',1],['lk','Langfristiger Kredit (ab P4)','MEUR',1],['wp','Kauf Wertpapiere','MEUR',1],['div','Dividende','MEUR',0.5]]}
 ];
 const PAR_GROUPS = [
-  {t:'Annahmen: Markt und Konkurrenz', f:[
-    ['growth','Marktwachstum Markt 1','%',0.005,'Prognose P2: stabil, leichte Einbussen möglich.','pct'],
-    ['cP','Ø Preis Konkurrenz','EUR',10],['cW','Ø Werbung Konkurrenz','MEUR',0.1],['cV','Ø Vertrieb Konkurrenz','MA',1],['cT','Ø Technologie Konkurrenz','Index',0.1],
-    ['adj','Sonstiger Nachfrageeffekt','%',0.01,'Zum Beispiel Kundenzufriedenheit nach Lieferunfähigkeit oder Preiserhöhung.','pct'],
-    ['redis','Zusatznachfrage aus Lieferunfähigkeit anderer','Stk',100],
-    ['e','Preiselastizität (relativ)','',0.05,'Aus Marktforschung P1 geschätzt: 4.15'],['w','Werbewirkung (Exponent)','',0.01],['v','Vertriebswirkung (Exponent)','',0.01],['t','Technologiewirkung je Indexpunkt','',0.005],
-    ['gaPrice','Grossabnehmer Preis','EUR',10],['gaMax','Grossabnehmer Höchstmenge','Stk',500],
-    ['fx','Wechselkurs','FCU/EUR',0.1],['m2Base','Markt 2: Absatz je Unternehmen','Stk',500],['m2Ref','Markt 2: Referenzpreis (Annahme)','EUR',50,'Unbekannt. Nach der ersten Periode in Markt 2 anpassen.'],['m2V','Markt 2: Referenz Vertrieb','MA',1]]},
+  {t:'Wirtschaftsprognose: Grossabnehmer und Markt 2', f:[
+    ['gaPrice','Grossabnehmer Preis','EUR',10],['gaMax','Grossabnehmer Höchstmenge','Stk',500],['fx','Wechselkurs','FCU/EUR',0.1]]},
   {t:'Annahmen: Kosten und Personal', f:[
     ['wage.fert','Lohn Fertigung','TEUR',0.1],['wage.fe','Lohn F&E','TEUR',0.1],['wage.vt','Lohn Vertrieb','TEUR',0.1],['wage.ek','Lohn Einkauf','TEUR',0.1],['wage.vw','Lohn Verwaltung','TEUR',0.1],
     ['hireCost','Einstellungskosten','TEUR',0.5],['fireCost','Entlassungskosten','TEUR',0.5],
@@ -686,6 +696,16 @@ const LATER_TXT = {4:'ab P4: Einführung Gen. 2, kurz- und langfristige Kredite 
   99:'Werbung Markt 2, Wertanalyse, Training, Prozessoptimierung, Rationalisierung, Personalnebenkosten, Wertpapiere und Dividende sind in euren Unterlagen noch nicht freigeschaltet'};
 const pnum = k => +k.slice(1);
 function availIn(field, k){ return (AVAIL[field]||1) <= pnum(k); }
+function compBlock(k){
+  const c = compFor(k), src = COMP_HIST[k] ? 'aus dem Marktforschungsbericht' : 'vom Modell aus P0/P1 fortgeschrieben';
+  return `<div class="body" style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
+    <div class="sub" style="margin:0">Konkurrenz ${k} (Ø der 5 anderen, ${src})</div>
+    <div class="tw"><table><tbody>
+      <tr><td>Preis</td><td class="n">${fmt(c.cP,0)} EUR</td></tr><tr><td>Werbung</td><td class="n">${fmt(c.cW,2)} MEUR</td></tr>
+      <tr><td>Vertrieb</td><td class="n">${fmt(c.cV,1)} MA</td></tr><tr><td>Technologieindex</td><td class="n">${fmt(c.cT,2)}</td></tr>
+      <tr><td>Marktwachstum Markt 1</td><td class="n">${pct(GROWTH[k]!==undefined?GROWTH[k]:0,1)}</td></tr></tbody></table></div>
+    <p class="note" style="margin:0">Nicht verstellbar. Regel: Preis +0.93 × Inflation (${pct(inflOf(k),1)}), Werbung und Vertrieb halbe Veränderung der Vorperiode, Technologie gleiche Zunahme wie zuletzt.</p></div>`;
+}
 function renderDecisions(){
   const k = state.cur, p = state.periods[k], st = cache[k].start;
   const open = JSON.parse(sessionGet('open')||'{}');
@@ -699,6 +719,7 @@ function renderDecisions(){
     const isOpen = open['d'+i]!==undefined ? open['d'+i] : !!g.open;
     h += `<details class="grp" data-key="d${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${fs.map(f=>fieldHTML('dec',f,p.dec,st.machines)).join('')}</div></details>`;
   });
+  h = compBlock(k) + h;
   const later = Object.entries(LATER_TXT).filter(([n])=>+n>pnum(k)).map(([n,t])=>t);
   if (later.length) h += `<div class="body" style="padding:10px 16px;border-bottom:1px solid var(--line)"><p class="note" style="margin:0">In ${k} nicht wählbar: ${later.map(esc).join('; ')}. Freigeschaltet ist nur, was im Entscheidungsprotokoll P1, in der Wirtschaftsprognose P2 oder in den Moodle-Hinweisen steht.</p></div>`;
   PAR_GROUPS.forEach((g,i)=>{
@@ -768,7 +789,7 @@ function renderResults(mode){
   $('#results').innerHTML = h;
 }
 function tabContent(tab, k, S, r, p){
-  const D = p.dec, P = p.par;
+  const D = cache[k].dec || p.dec, P = cache[k].par || p.par;
   if (tab==='uebersicht'){
     const mx = Math.max(r.d1+r.ga+r.d2, r.maxMach, r.maxStaff, r.avail)*1.02;
     return `<div class="two"><div class="bars"><h3>Nachfrage und Kapazität (Stk)</h3>
@@ -784,7 +805,7 @@ function tabContent(tab, k, S, r, p){
         ['Selbstkosten je Stk (ca.)', fmt((r.cogs + r.personal + r.sonst + r.afa + r.matAuf - r.hk)/Math.max(1,r.sold_)*1e6 ,0)+' EUR'],
         ['Technologie Gen. 1 / Gen. 2', fmt(r.techG1,1)+' / '+fmt(r.techG2,1)],
         ['Rating-Tendenz', r.rating]])}</div></div>
-      <p class="note">Das Modell ist eine Schätzung: Die Absatzfunktion stammt aus dem Marktforschungsbericht P1, die Konkurrenz-Annahmen stehen links unter «Annahmen». Die grösste Unsicherheit liegt bei der Nachfrage und bei der Produktivität neuer Mitarbeitender.</p>`;
+      <p class="note">Das Modell ist eine Schätzung: Die Absatzfunktion stammt aus dem Marktforschungsbericht P1. Das Verhalten der Konkurrenz bestimmt das Modell aus P0 und P1 (Anzeige unter «Entscheidungen»). Die grösste Unsicherheit liegt bei der Nachfrage und bei der Produktivität neuer Mitarbeitender.</p>`;
   }
   if (tab==='markt'){
     return `${tbl(['Markt 1','Wert'],[
@@ -797,7 +818,7 @@ function tabContent(tab, k, S, r, p){
       ['Markt 2 aktiv', D.m2?'ja':'nein'],['Markt 2 Preis', D.m2? fmt(D.p2,0)+' FCU = '+fmt(r.p2eur,0)+' EUR':'–'],
       ['Markt 2 Nachfrage / Absatz', D.m2? fmt(r.d2,0)+' / '+fmt(r.s2,0)+' Stk':'–'],['Umsatz Markt 2', fmt(r.u2,2)+' MEUR']])}
       ${elasticityTable(k)}
-      <p class="note">Formel: Absatz = Marktbasis × (Preis / Ø Preis)^−${fmt(P.e,2)} × (Werbung / Ø)^${fmt(P.w,3)} × (Vertrieb / Ø)^${fmt(P.v,3)} × Technologie-Faktor. Die Durchschnittswerte enthalten die fünf Konkurrenten mit den Annahmen links.</p>`;
+      <p class="note">Formel: Absatz = Marktbasis × (Preis / Ø Preis)^−${fmt(P.e,2)} × (Werbung / Ø)^${fmt(P.w,3)} × (Vertrieb / Ø)^${fmt(P.v,3)} × Technologie-Faktor. Die Durchschnittswerte enthalten die fünf Konkurrenten: Preis ${fmt(P.cP,0)} EUR, Werbung ${fmt(P.cW,2)} MEUR, Vertrieb ${fmt(P.cV,1)} MA, Technologie ${fmt(P.cT,2)} (vom Modell bestimmt).</p>`;
   }
   if (tab==='fertigung'){
     const rows = ['fert','fe','vt','ek','vw'].map(d=>{ const x=r.dept[d]; return [({fert:'Fertigung',fe:'F&E',vt:'Vertrieb',ek:'Einkauf',vw:'Verwaltung'})[d], fmt(x.start,0), fmt(x.hires,0), fmt(x.fires,0), fmt(x.fl,0), fmt(x.end,0)]; });
@@ -891,10 +912,10 @@ function machTxt(d){
   return parts.join(' · ') || '–';
 }
 function elasticityTable(k){
-  const {start:S} = cache[k]; const p = state.periods[k];
+  const {start:S, par, dec} = cache[k];
   const rows = [-150,-100,-50,0,50,100,150].map(dp=>{
-    const d = {...p.dec, price:p.dec.price+dp};
-    const r = simulate(clone(S), p.par, d);
+    const d = {...dec, price:dec.price+dp};
+    const r = simulate(clone(S), par, d);
     return {cls: dp===0?'sum':'', c:[fmt(d.price,0)+' EUR', fmt(r.d1,0), fmt(r.s1,0), fmt(r.U,2), fmt(r.ebit,2), fmt(r.uek,2)]};
   });
   return `<h3>Preis-Szenarien (übrige Entscheide gleich)</h3>`+tbl(['Preis','Nachfrage M1','Absatz M1','Umsatz','EBIT','ÜK'], rows);
