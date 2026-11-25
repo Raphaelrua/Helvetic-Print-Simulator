@@ -15,6 +15,7 @@
   --accent:#0a7fa6; --accent-ink:#ffffff; --accent-soft:#dff1f7;
   --good:#1f8a4c; --warn:#b26a00; --bad:#c0244f; --good-soft:#e3f4ea; --warn-soft:#fbf0dc; --bad-soft:#fbe3ea;
   --input:#fbfcfd;
+  --bar:#14283b; --bar-ink:#e8eff5; --hot:#ff5b5b; --side:#535e6a; --side-ink:#f2f5f8; --side-on:#e2e6ea; --head-row:#0b5f96; --head-ink:#ffffff; --cur-col:#e6f0f7;
   --f-head:"Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
   --f-body:"Inter", "Segoe UI", system-ui, sans-serif;
   --f-num:"JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -23,23 +24,86 @@
   --bg:#0f161c; --panel:#162029; --ink:#e6edf2; --muted:#93a4b1; --line:#2a3946; --soft:#1d2a35;
   --accent:#3bb6dd; --accent-ink:#06202b; --accent-soft:#143341;
   --good:#4cc283; --warn:#e3a443; --bad:#f06b8f; --good-soft:#15301f; --warn-soft:#33270f; --bad-soft:#3a1622;
-  --input:#111b23; color-scheme:dark}}
+  --input:#111b23; --bar:#0a141d; --bar-ink:#e6edf2; --hot:#ff7070; --side:#1b252e; --side-ink:#d9e2e9; --side-on:#26333f; --head-row:#1d5f8a; --head-ink:#ffffff; --cur-col:#1a2c3a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f161c; --panel:#162029; --ink:#e6edf2; --muted:#93a4b1; --line:#2a3946; --soft:#1d2a35;
   --accent:#3bb6dd; --accent-ink:#06202b; --accent-soft:#143341;
   --good:#4cc283; --warn:#e3a443; --bad:#f06b8f; --good-soft:#15301f; --warn-soft:#33270f; --bad-soft:#3a1622;
-  --input:#111b23; color-scheme:dark}
+  --input:#111b23; --bar:#0a141d; --bar-ink:#e6edf2; --hot:#ff7070; --side:#1b252e; --side-ink:#d9e2e9; --side-on:#26333f; --head-row:#1d5f8a; --head-ink:#ffffff; --cur-col:#1a2c3a; color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;
-  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;padding-block:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bar)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bar);color:var(--bar-ink);display:flex;align-items:center;gap:14px;min-height:52px;flex-wrap:wrap;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:6px}
+.top .menu{display:none;background:none;border:0;color:var(--bar-ink);cursor:pointer;padding:6px}
+.top .brand{font:700 1.05rem var(--f-head);letter-spacing:.01em;white-space:nowrap}
+.top .brand small{font:500 .78rem var(--f-body);opacity:.75;margin-left:8px}
+.top .sp{flex:1}
+.top .co{font:600 .88rem var(--f-body);white-space:nowrap}
+.pnums{display:flex;align-items:baseline;gap:2px;border-left:1px solid rgba(255,255,255,.25);padding-left:12px}
+.pnums button{background:none;border:0;color:var(--bar-ink);font:600 15px var(--f-num);padding:4px 7px;cursor:pointer;opacity:.85;line-height:1}
+.pnums button.new{opacity:.45}
+.pnums button[aria-current="true"]{color:var(--hot);font-size:21px;opacity:1}
+.pnums button:focus-visible,.top .menu:focus-visible,.nav button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:calc(100vh - 52px)}
+.side{background:var(--side);color:var(--side-ink);padding-top:28px}
+.nav{display:flex;flex-direction:column}
+.nav button{display:flex;align-items:center;gap:12px;background:none;border:0;color:var(--side-ink);font:500 .95rem var(--f-body);text-align:left;padding:15px 18px;cursor:pointer}
+.nav button svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6}
+.nav button:hover{background:rgba(255,255,255,.06)}
+.nav button[aria-current="page"]{background:var(--side-on);color:var(--accent)}
+.side .meta{padding:20px 18px;font-size:.75rem;opacity:.75}
+.main{min-width:0;padding-block:24px 48px;padding-left:max(20px, env(safe-area-inset-left, 0px));padding-right:max(20px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:18px;max-width:1400px}
+.vh h1{font:500 2.4rem var(--f-head);color:var(--head-row);letter-spacing:-.01em}
+.vh p{margin:.2rem 0 0;color:var(--accent);font-size:1.15rem}
+.vh .src{display:inline-block;margin-top:8px}
+h2.sec{font:500 1.6rem var(--f-head);color:var(--head-row)}
+.hub{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:28px;align-items:start}
+.hub aside{border-left:1px solid var(--line);padding-left:28px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:1000px){.hub{grid-template-columns:minmax(0,1fr)}.hub aside{border-left:0;padding-left:0}}
+table.kt{border:1px solid var(--line);background:var(--panel);font-size:.88rem}
+table.kt th{background:var(--head-row);color:var(--head-ink);text-transform:none;letter-spacing:0;font-size:.85rem;padding:8px 10px;border-right:1px solid rgba(255,255,255,.25)}
+table.kt th.u,table.kt td.u{text-align:right;font-style:italic;color:var(--muted)}
+table.kt th.u{color:var(--head-ink)}
+table.kt td{padding:9px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+table.kt td.cur{background:var(--cur-col);font-weight:600}
+table.kt tr.grp td{background:var(--soft);font:600 .74rem var(--f-body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.na{color:var(--muted);font-weight:400}
+.team dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:.88rem}
+.team dt{color:var(--muted)} .team dd{margin:0;font-weight:600}
+.news{display:flex;flex-direction:column;gap:14px;max-width:85ch}
+.news article{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+.news ul{margin:.5rem 0 0;padding-left:1.1rem;display:flex;flex-direction:column;gap:4px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.chart svg{width:100%;height:auto;display:block}
+.chart .ax{fill:var(--muted);font:11px var(--f-num)}
+.chart .grid{stroke:var(--soft);stroke-width:1}
+.chart .base{stroke:var(--line);stroke-width:1}
+.chart .ln{stroke:var(--accent);stroke-width:2;fill:none}
+.chart .ar{fill:var(--accent-soft)}
+.chart .pt{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.chart .pt.sim{fill:var(--panel);stroke:var(--accent);stroke-width:2}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .lbl{fill:var(--ink);font:600 11px var(--f-num)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:2px solid var(--accent)}
+.legend i.f{background:var(--accent)}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font:12px var(--f-num);padding:5px 8px;border-radius:4px;z-index:50}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
+@media (max-width:800px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .top .menu{display:inline-flex}
+  .side{display:none;padding-top:0}
+  .side.open{display:block}
+  .pnums{border-left:0;padding-left:0;width:100%;overflow-x:auto}
+}
 h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0}
 h1{font-size:1.5rem;font-weight:700;letter-spacing:-.01em}
 h2{font-size:1.05rem;font-weight:600}
 h3{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .num,td.n,th.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .wrap{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
-header.top p{margin:.25rem 0 0;color:var(--muted);max-width:70ch}
 .periods{display:flex;flex-wrap:wrap;gap:6px}
 .periods button{font:600 .85rem var(--f-head);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:.45rem .8rem;border-radius:6px;cursor:pointer}
 .periods button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -121,20 +185,21 @@ footer{font-size:.75rem;color:var(--muted);max-width:90ch}
 
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <h1>Helvetic Print Simulator</h1>
-      <p>Eigenes Rechenmodell für Unternehmen 2, abgestimmt auf die TOPSIM-Berichte P0 und P1. Entscheide links ändern, Ergebnis rechts lesen. Alle Werte sind Schätzungen, kein offizielles Ergebnis.</p>
-    </div>
-    <nav class="periods" id="periods" aria-label="Periode wählen"></nav>
-  </header>
-  <div class="grid">
-    <aside class="panel decisions" id="decisions" aria-label="Entscheide und Annahmen"></aside>
-    <main class="results" id="results"></main>
-  </div>
-  <footer>Grundlage: Teilnehmerhandbuch v15.8, Wirtschaftsprognosen P1 und P2, Sammelberichte P0 und P1 (Unternehmen 2). Die Absatzfunktion ist aus dem Marktforschungsbericht P1 geschätzt (Abweichung je Unternehmen unter 1 %). Kostenrechnung, Liquidität und Bilanz rechnen P1 auf ±0.1 MEUR nach. Eingaben werden nur in diesem Browser gespeichert.</footer>
+<header class="top">
+  <button class="menu" id="menu" aria-label="Menü ein- und ausblenden" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <span class="brand">Helvetic Print Simulator<small>Planspiel UF5</small></span>
+  <span class="sp"></span>
+  <span class="co">Unternehmen 2 (Helvetic Print AG)</span>
+  <nav class="pnums" id="periods" aria-label="Periode wählen"></nav>
+</header>
+<div class="shell">
+  <aside class="side" id="side">
+    <nav class="nav" id="nav" aria-label="Bereiche"></nav>
+    <div class="meta">Eigenes Rechenmodell, abgestimmt auf die Berichte P0 und P1. Simulierte Werte sind Schätzungen.</div>
+  </aside>
+  <main class="main" id="view"></main>
 </div>
+<div id="tip" hidden></div>
 
 <script>
 /*ENGINE-START*/
@@ -466,7 +531,12 @@ const DEC_P2 = {...DEC_P2_ORIG, plan:46500, prod:56000, buyA:0, buyB:1, sell:['A
 const IST_P1 = {s1:47000, ga:4000, U:147.10, prod:42000, hkUnit:2172.46, personal:60.92, matAuf:27.30, afa:7.75, sonst:22.44, ebit:10.07, uekInt:0.65, tax:3.86, jue:5.56, uek:10.83, ek:37.08, bsum:61.86, d1:53734, fertEnd:851, prodPerMA:49.08, auslMA:1.0696};
 
 /* ---------- Zustand ---------- */
-const PERIODS = ['P1','P2','P3','P4','P5','P6','P7'];
+const PERIODS = ['P0','P1','P2','P3','P4','P5','P6','P7'];
+// Ist-Kennzahlen aus den TOPSIM-Berichten (Infohub, Sammelberichte P0 und P1)
+const IST_KPI = {
+  P0:{aktie:186.44, U:129.00, ur:0.0506, jue:6.52, ek:31.52, div:0, cumDiv:0, fkq:0.6367, kz:69.97, pq:100, bek:49.25, tech:100.00, sold_:43000, ebit:13.91, uek:43.37, rating:'BB', prod:40000, s1:43000, ga:0},
+  P1:{aktie:236.18, U:147.10, ur:0.0378, jue:5.56, ek:37.08, div:0, cumDiv:0, fkq:0.4005, kz:72.63, pq:100, bek:49.04, tech:102.66, sold_:51000, ebit:10.07, uek:10.83, rating:'BBB', prod:42000, s1:47000, ga:4000}
+};
 const STORE_KEY = 'hp-sim-v2';
 let state = null;
 function variantOf(period, name, start, par, dec){
@@ -480,8 +550,8 @@ function defaultState(){
     variants:[variantOf('P2','Eure Entscheide (Original)', START_P2, parP2(), DEC_P2_ORIG), variantOf('P2','Optimiert', START_P2, parP2(), DEC_P2)] };
 }
 function load(){
-  try { const s = localStorage.getItem(STORE_KEY); if (s){ const o = JSON.parse(s); if (o && o.periods && o.periods.P1) return o; } } catch(e){}
-  return defaultState();
+  try { const s = localStorage.getItem(STORE_KEY); if (s){ const o = JSON.parse(s); if (o && o.periods && o.periods.P1){ o.view = o.view || 'infohub'; return o; } } } catch(e){}
+  const d = defaultState(); d.view = 'infohub'; return d;
 }
 function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
 state = load();
@@ -505,6 +575,7 @@ const cache = {};
 function runAll(){
   let start = clone(START_P1);
   for (const k of PERIODS){
+    if (k==='P0') continue;
     if (!state.periods[k]) break;
     if (k==='P2') start = clone(START_P2);
     const p = state.periods[k];
@@ -623,7 +694,10 @@ function bar(label, val, max, txt, cls=''){
   const w = max>0 ? Math.max(0, Math.min(100, val/max*100)) : 0;
   return `<div class="bar"><span>${esc(label)}</span><span class="track"><span class="fill ${cls}" style="width:${w}%"></span></span><span class="v">${txt}</span></div>`;
 }
-function renderResults(){
+let resultsMode = 'full';
+function renderResults(mode){
+  if (mode) resultsMode = mode;
+  if (!$('#results')) return;
   const k = state.cur, {start:S, r} = cache[k], p = state.periods[k];
   const prevK = PERIODS[PERIODS.indexOf(k)-1];
   let h = '';
@@ -638,7 +712,13 @@ function renderResults(){
   </div>`;
   const W = r.warnings;
   h += `<div class="warns">${W.length? W.map(([c,t,d])=>`<div class="w ${c}"><div><b>${esc(t)}.</b> ${esc(d)}</div></div>`).join('') : `<div class="w ok"><div><b>Keine Warnungen.</b> Kapazität, Lieferfähigkeit und Planwert passen zusammen.</div></div>`}</div>`;
-  h += `<section class="panel"><div class="tabs" role="tablist">${TABS.map(([id,t])=>`<button role="tab" data-tab="${id}" aria-selected="${state.tab===id}">${t}</button>`).join('')}</div><div class="tabpanel" role="tabpanel">${tabContent(state.tab, k, S, r, p)}</div></section>`;
+  if (resultsMode==='compact'){
+    h += `<section class="panel"><div class="tabpanel"><h2>Varianten vergleichen</h2>${tabContent('varianten', k, S, r, p)}</div></section>`;
+  } else {
+    const tabs = TABS.filter(t=>t[0]!=='varianten');
+    if (!tabs.some(t=>t[0]===state.tab)) state.tab = 'uebersicht';
+    h += `<section class="panel"><div class="tabs" role="tablist">${tabs.map(([id,t])=>`<button role="tab" data-tab="${id}" aria-selected="${state.tab===id}">${t}</button>`).join('')}</div><div class="tabpanel" role="tabpanel">${tabContent(state.tab, k, S, r, p)}</div></section>`;
+  }
   $('#results').innerHTML = h;
 }
 function tabContent(tab, k, S, r, p){
@@ -774,15 +854,174 @@ function elasticityTable(k){
   return `<h3>Preis-Szenarien (übrige Entscheide gleich)</h3>`+tbl(['Preis','Nachfrage M1','Absatz M1','Umsatz','EBIT','ÜK'], rows);
 }
 
+/* ---------- Kopfzeile und Navigation ---------- */
+const ICON = {
+  infohub:'<svg viewBox="0 0 24 24"><path d="M8 4H5v16h3M16 4h3v16h-3"/><circle cx="12" cy="12" r="1.2"/></svg>',
+  news:'<svg viewBox="0 0 24 24"><path d="M4 6h12v12H6a2 2 0 0 1-2-2zM16 9h4v7a2 2 0 0 1-4 0M7 9h6M7 12h6M7 15h4"/></svg>',
+  charts:'<svg viewBox="0 0 24 24"><path d="M5 20V10M10 20V4M15 20v-7M20 20v-11M3 20h18"/></svg>',
+  reports:'<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM9 9h6M9 13h6M9 17h4"/></svg>',
+  decisions:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'
+};
+const VIEWS = [['infohub','Infohub'],['news','Neuigkeiten'],['charts','Diagramme'],['reports','Berichtswesen'],['decisions','Entscheidungen']];
 function renderPeriods(){
   $('#periods').innerHTML = PERIODS.map(k=>{
-    const exists = !!state.periods[k];
-    const sub = k==='P1' ? 'Test' : exists ? '' : '+';
-    return `<button data-period="${k}" aria-pressed="${state.cur===k}">${k}${sub?`<small>${sub}</small>`:''}</button>`;
+    const exists = k==='P0' || !!state.periods[k];
+    return `<button data-period="${k}" class="${exists?'':'new'}" aria-current="${state.cur===k}" title="Periode ${k.slice(1)}${exists?'':' (neu anlegen)'}">${k.slice(1)}</button>`;
   }).join('');
 }
-function renderAll(){ runAll(); renderPeriods(); renderDecisions(); renderResults(); }
-function refreshResults(){ runAll(); renderResults(); }
+function renderNav(){
+  $('#nav').innerHTML = VIEWS.map(([id,t])=>`<button data-view="${id}" aria-current="${state.view===id?'page':'false'}">${ICON[id]}<span>${t}</span></button>`).join('');
+}
+function isIst(k){ return k==='P0' || k==='P1'; }
+function prevOf(k){ const i = PERIODS.indexOf(k); return i>0 ? PERIODS[i-1] : null; }
+/* Kennzahlen einer Periode: Ist aus Berichten (P0, P1, eingetragene Ist-Werte) oder Simulation */
+function kpiFor(k){
+  if (!k) return null;
+  if (IST_KPI[k]) return {...IST_KPI[k], src:'ist'};
+  const c = cache[k]; if (!c) return null;
+  const r = c.r;
+  let cum = 0; for (const q of PERIODS){ if (q==='P0'||q==='P1') continue; if (!cache[q]) break; cum += cache[q].r.div; if (q===k) break; }
+  const o = {aktie:null, U:r.U, ur:r.U?r.jue/r.U:null, jue:r.jue, ek:r.ek, div:r.div, cumDiv:cum, fkq:1-r.ekq, kz:null, pq:null, bek:null, tech:r.tech,
+    sold_:r.sold_, ebit:r.ebit, uek:r.uek, rating:r.rating, prod:r.prod, s1:r.s1, ga:r.ga, planDev:r.planDev, src:'sim'};
+  const I = state.periods[k].ist||{}; let any = false;
+  for (const f of ['U','ebit','jue','ek','uek','s1','prod']) if (I[f]!==undefined && I[f]!==''){ o[f] = +I[f]; any = true; }
+  if (any) o.src = 'teil-ist';
+  return o;
+}
+const SRC_TXT = {ist:'Ist (TOPSIM-Bericht)', sim:'Simulation', 'teil-ist':'Teilweise Ist'};
+function srcPill(s){ return `<span class="pill ${s==='sim'?'warn':'good'}">${SRC_TXT[s]||'–'}</span>`; }
+
+/* ---------- Ansicht: Infohub ---------- */
+const KPI_ROWS = [
+  ['Aktienkurs','EUR','aktie',2],['Umsatz Gesamt','MEUR','U',2],['Umsatzrendite','%','ur',2,'pct'],['Periodenüberschuss/-fehlbetrag','MEUR','jue',2],
+  ['Eigenkapital','MEUR','ek',2],['Ausschüttung Dividende aktuelle Periode','MEUR','div',2],['Kumulierte Dividende','MEUR','cumDiv',2],['Fremdkapitalquote','%','fkq',2,'pct'],
+  ['Kundenzufriedenheit','Index','kz',2],['Planungsqualität','Index','pq',2],['Bekanntheit','Index','bek',2],['Produktqualität','Index','tech',2]];
+const KPI_EXTRA = [['Absatz gesamt','Stk','sold_',0],['Fertigung','Stk','prod',0],['Betriebsergebnis','MEUR','ebit',2],['Überziehungskredit (Liquiditätsbedarf)','MEUR','uek',2],['Rating','Klasse','rating','txt']];
+function kv(o, f, d, kind){
+  if (!o) return '<span class="na">–</span>';
+  const v = o[f];
+  if (v===null || v===undefined) return '<span class="na" title="Wird vom Modell nicht berechnet. Nach der Auswertung aus dem TOPSIM-Bericht ablesen.">n. b.</span>';
+  if (d==='txt') return esc(v);
+  return kind==='pct' ? fmt(v*100,d) : fmt(v,d);
+}
+function viewInfohub(){
+  const k = state.cur, prev = prevOf(k);
+  const cur = kpiFor(k), pv = kpiFor(prev);
+  const rows = KPI_ROWS.concat([null]).concat(KPI_EXTRA);
+  let h = `<div class="vh"><h1>Infohub</h1><p>Periode ${k.slice(1)} · Helvetic Print AG</p></div>
+  <div class="hub"><div class="tw"><h2 class="sec">Kennzahlen</h2>
+  <table class="kt"><thead><tr><th>Übersicht KPIs</th><th class="u">Einheit</th><th class="n">Vorperiode</th><th class="n">Aktuelle Periode</th></tr></thead><tbody>
+  ${rows.map(r=> r===null ? `<tr class="grp"><td colspan="4">Zusätzlich aus dem Simulator</td></tr>` :
+    `<tr><td>${esc(r[0])}</td><td class="u">${esc(r[1])}</td><td class="n">${kv(pv,r[2],r[3],r[4])}</td><td class="n cur">${kv(cur,r[2],r[3],r[4])}</td></tr>`).join('')}
+  ${cur && cur.planDev!==undefined && cur.planDev!==null ? `<tr><td>Abweichung Planwert Markt 1</td><td class="u">%</td><td class="n"><span class="na">–</span></td><td class="n cur">${fmt(cur.planDev*100,1)}</td></tr>`:''}
+  </tbody></table>
+  <p class="note">Vorperiode: ${pv?srcPill(pv.src):'–'} · Aktuelle Periode: ${cur?srcPill(cur.src):'–'}. «n. b.» heisst: Das Modell berechnet diesen Wert nicht.</p></div>
+  <aside class="team"><h2 class="sec">Ihr Team</h2>
+    <dl><dt>Unternehmen</dt><dd>2 · Helvetic Print AG</dd><dt>Produkt</dt><dd>Copy Classic ${cache[k]&&cache[k].r.end.product==='G2'?'Gen. 2':'Gen. 1'}</dd><dt>Datenstand</dt><dd>${cur?SRC_TXT[cur.src]:'–'}</dd><dt>Rating</dt><dd>${cur?esc(cur.rating):'–'}</dd></dl>`;
+  if (k!=='P0' && cache[k]){
+    const r = cache[k].r;
+    h += `<div class="liq" style="flex-direction:column;align-items:flex-start;gap:4px"><h3>Liquiditätsbedarf ${k}</h3><div class="big num">${fmt(k==='P1'?IST_KPI.P1.uek:r.uek,2)} MEUR</div><div class="note">${k==='P1'?'Ist laut Bericht P1':'Simulation, in Moodle melden'}</div></div>`;
+    if (k!=='P1') h += r.warnings.length ? `<button class="btn" data-view="decisions">${r.warnings.length} Warnung${r.warnings.length>1?'en':''} ansehen</button>` : `<span class="pill good">Keine Warnungen</span>`;
+    if (k!=='P1') h += `<button class="btn danger" id="btn-reset-hub">${resetArmed?'Wirklich zurücksetzen? Nochmals klicken':'Periode zurücksetzen'}</button>`;
+  }
+  h += `</aside></div>`;
+  return h;
+}
+let resetArmed = false;
+
+/* ---------- Ansicht: Neuigkeiten ---------- */
+const NEWS = {
+  P0:{t:'Ausgangslage', items:['Neuer Vorstand übernimmt das Unternehmen mit dem Farbkopierer Copy Classic (Technologieindex 100).','Vier Anlagen vom Typ A mit 42\'000 Stück Kapazität, Umweltindex im Schnitt 91.5 (Umweltabgabe 1.9 MEUR).','1\'213 Mitarbeitende, davon 852 in der Fertigung; Produktivität 50 Geräte pro Person.','Absatz 43\'000 Stück zu 3\'000 EUR, Umsatz 129 MEUR, Betriebsergebnis 13.91 MEUR.','Überziehungskredit 43.37 MEUR, Rating BB, Eigenkapitalquote 36 %.']},
+  P1:{t:'Wirtschaftsprognose Periode 1', items:['BIP ca. +1.5 %, Inflation ca. +2.0 %, Löhne +2.0 %.','Nachfrage nach Farbkopierern je nach Preisniveau +3 bis +5 %, getragen vom Ersatzgeschäft.','Grossabnehmer: bis 4\'000 Geräte zu 2\'700 EUR, ab Werk.','Einstellungskosten sinken auf 5\'000 EUR pro Person.','Massenentlassung ab 5 % der Belegschaft; Sozialplan Pflicht ab 50 Entlassungen, ohne Vereinbarung über 100 MA Strafkosten.','Überstunden: Personal max. 10 %, Anlagen max. 5 %.']},
+  P2:{t:'Wirtschaftsprognose Periode 2', items:['BIP gut +2.5 %, Lebenshaltungskosten und Löhne je ca. +3 %; Leitzins +1 Prozentpunkt, Zins Überziehungskredit 6 %.','Heimmarkt stabil bis leicht rückläufig; neuer Exportmarkt 2 mit ca. 10\'000 Geräten pro Unternehmen (Wechselkurs 8.3 FCU je EUR, Transport 75 EUR).','Grossabnehmer: bis 9\'000 Geräte zu 2\'600 EUR.','ERP-Upgrade einmalig 3 MEUR.','Einkauf mit Mengenstaffel und zweitem Lieferanten (günstiger, aber Umwelt- und Sozialindex tiefer, 90 % Zahlung sofort).','Neue Anlage Typ B: 36.1 MEUR, 25\'000 Stück, Umweltindex 110. Typ A kostet neu 23 MEUR.','Neu wählbar: Corporate Identity, Ökologie-Beratung, Entwicklung von Gen. 2 (Einführung frühestens P4, Marktreife nach ca. 170–200 Personenjahren).','Betriebsstoffe Gen. 1 neu 65 EUR pro Stück.']}
+};
+function viewNews(){
+  const k = state.cur, n = NEWS[k];
+  let h = `<div class="vh"><h1>Neuigkeiten</h1><p>Periode ${k.slice(1)}</p></div><div class="news">`;
+  if (n) h += `<article><h2>${esc(n.t)}</h2><ul>${n.items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul></article>`;
+  else h += `<article><h2>Noch keine Wirtschaftsprognose</h2><p class="note">Für ${k} gelten die Annahmen der Vorperiode. Sobald die Prognose da ist: unter «Entscheidungen» die Annahmen (Löhne, Preise, Zinsen, Grossabnehmer, Konkurrenz) anpassen.</p></article>`;
+  h += `<article><h2>Im Simulator hinterlegt</h2><p class="note">Löhne, Material- und Betriebsstoffpreise, Zinsen und Anlagedaten der Periode stehen unter «Entscheidungen» in den Abschnitten «Annahmen».</p></article></div>`;
+  return h;
+}
+
+/* ---------- Ansicht: Diagramme ---------- */
+const CHARTS = [['Umsatz','U','MEUR',1],['Betriebsergebnis','ebit','MEUR',1],['Periodenüberschuss','jue','MEUR',1],['Absatz gesamt','sold_','Stk',0],['Überziehungskredit','uek','MEUR',1],['Fremdkapitalquote','fkq','%',0,'pct']];
+function lineChart(title, unit, pts, d, kind){
+  const W=320, H=170, L=44, R=12, T=22, B=24;
+  const vals = pts.map(p=>kind==='pct'?p.v*100:p.v);
+  let lo = Math.min(0, ...vals), hi = Math.max(...vals); if (hi===lo) hi = lo+1; hi = hi*1.12;
+  const x = i => L + (pts.length>1 ? i*(W-L-R)/(pts.length-1) : (W-L-R)/2);
+  const y = v => T + (H-T-B)*(1-(v-lo)/(hi-lo));
+  const ticks = [lo, lo+(hi-lo)/2, hi].map(v=>+v.toFixed(d));
+  const path = vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const area = path + `L${x(vals.length-1).toFixed(1)},${y(lo).toFixed(1)}L${x(0).toFixed(1)},${y(lo).toFixed(1)}Z`;
+  const last = vals.length-1;
+  return `<div class="chart"><h3>${esc(title)} (${esc(unit)})</h3>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)} je Periode">
+    ${ticks.map(t=>`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text class="ax" x="${L-6}" y="${y(t)+4}" text-anchor="end">${fmt(t,d)}</text>`).join('')}
+    <line class="base" x1="${L}" x2="${W-R}" y1="${y(lo)}" y2="${y(lo)}"/>
+    <path class="ar" d="${area}" opacity=".5"/><path class="ln" d="${path}"/>
+    ${pts.map((p,i)=>`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${p.k}</text>`).join('')}
+    ${vals.map((v,i)=>`<circle class="pt ${pts[i].src==='sim'?'sim':''}" cx="${x(i)}" cy="${y(v)}" r="4.5"/>`).join('')}
+    <text class="lbl" x="${Math.min(x(last), W-R-2)}" y="${y(vals[last])-9}" text-anchor="${last?'end':'middle'}">${fmt(vals[last],d)}</text>
+    ${vals.map((v,i)=>`<rect class="hit" x="${x(i)-14}" y="${T-10}" width="28" height="${H-T-B+20}" data-tip="${pts[i].k}: ${fmt(v,d)} ${unit} · ${SRC_TXT[pts[i].src]}"/>`).join('')}
+  </svg></div>`;
+}
+function viewCharts(){
+  const ks = PERIODS.filter(k=>kpiFor(k));
+  let h = `<div class="vh"><h1>Diagramme</h1><p>Entwicklung über alle Perioden</p></div>
+  <div class="legend"><span><i class="f"></i>Ist aus TOPSIM-Bericht</span><span><i></i>Simulation</span><span>Neue Periode anlegen: Zahl oben rechts anklicken.</span></div><div class="charts">`;
+  for (const [t,f,u,d,kind] of CHARTS){
+    const pts = ks.map(k=>{ const o=kpiFor(k); return {k, v:o[f], src:o.src}; }).filter(p=>p.v!==null && p.v!==undefined);
+    h += lineChart(t, u, pts, d, kind);
+  }
+  h += `</div><h2 class="sec">Tabelle</h2>`+tbl(['Periode'].concat(CHARTS.map(c=>c[0]+' ('+c[2]+')')).concat(['Quelle']), ks.map(k=>{ const o=kpiFor(k); return [k].concat(CHARTS.map(([_,f,u,d,kind])=> kind==='pct'?fmt(o[f]*100,d):fmt(o[f],d))).concat([SRC_TXT[o.src]]); }));
+  return h;
+}
+
+/* ---------- Ansicht: Berichtswesen ---------- */
+function p0Report(){
+  return `<div class="two">${tbl(['Gewinn- und Verlustrechnung P0','MEUR'],[
+    ['Umsatzerlöse','129.00'],['+ Bestandsveränderung Fertigerzeugnisse','−6.58'],['− Materialaufwand','26.00'],['− Personalaufwand','55.30'],['− Abschreibungen','7.75'],['− Sonstiger Aufwand','19.46'],
+    {cls:'res',c:['= Betriebsergebnis','13.91']},['− Zinsen Überziehungskredit','3.04'],{cls:'sum',c:['= Gewinn vor Steuern','10.87']},['− Steuern','4.35'],{cls:'res',c:['= Periodenüberschuss','6.52']}])}
+  ${tbl(['Bilanz Ende P0','MEUR'],[
+    ['Grundstücke und Bauten','20.00'],['Maschinen','22.25'],['Fertige Erzeugnisse (9\'000 Stk)','18.62'],['Forderungen','25.80'],['Kasse','0.10'],{cls:'res',c:['Bilanzsumme','86.77']},
+    ['Eigenkapital','31.52'],['Pensionsrückstellungen','11.87'],['Überziehungskredit','43.37']])}</div>
+  <div class="two">${tbl(['Markt und Fertigung P0','Wert'],[
+    ['Preis Markt 1','3\'000 EUR'],['Werbung','6.0 MEUR'],['Vertriebsmitarbeitende','100'],['Absatz (Plan 50\'000)','43\'000 Stk'],['Marktanteil','16.67 %'],
+    ['Fertigung','40\'000 Stk'],['Kapazität Anlagen','42\'000 Stk'],['Auslastung Anlagen / Personal','95.2 % / 99.7 %'],['Herstellkosten','2\'059.20 EUR/Stk'],['Selbstkosten','2\'676.53 EUR/Stk']])}
+  ${tbl(['Personal P0','Anfang','Einstellungen','Fluktuation','Ende'],[
+    ['Einkauf','18','1','1','18'],['Verwaltung','200','16','8','208'],['Fertigung','853','50','51','852'],['F&E','34','2','1','35'],['Vertrieb','100','9','9','100'],{cls:'sum',c:['Summe','1\'205','78','70','1\'213']}])}</div>
+  ${tbl(['Kostenarten P0','MEUR'],[['Einsatzstoffe (40\'000 × 600 EUR)','24.00'],['Betriebsstoffe','2.00'],['Löhne und Gehälter','37.46'],['Personalnebenkosten','14.99'],['Pensionsrückstellungen','1.87'],['Einstellungen','0.98'],
+    ['Abschreibungen','7.75'],['Sonstige fixe Kosten','3.25'],['Instandhaltung','5.00'],['Umweltabgabe','1.90'],['Nacharbeit','1.24'],['Lagerkosten','0.90'],['Werbung / Marktforschung','6.10'],['Transport','1.08'],{cls:'sum',c:['Summe','108.51']}])}`;
+}
+function viewReports(){
+  const k = state.cur;
+  if (k==='P0') return `<div class="vh"><h1>Berichtswesen</h1><p>Periode 0 · Ist aus dem Sammelbericht</p></div>` + p0Report();
+  return `<div class="vh"><h1>Berichtswesen</h1><p>Periode ${k.slice(1)} · ${k==='P1'?'Modell, Vergleich mit Ist im Tab «Plan gegen Ist»':'Simulation'}</p></div><div class="results" id="results"></div>`;
+}
+
+/* ---------- Ansicht: Entscheidungen ---------- */
+function viewDecisions(){
+  const k = state.cur;
+  if (k==='P0') return `<div class="vh"><h1>Entscheidungen</h1><p>Periode 0 · Ausgangslage, keine eigenen Entscheide</p></div>`+
+    tbl(['Entscheidungsprotokoll P0','Wert'],[['Preis Markt 1','3\'000 EUR'],['Werbung Markt 1','6.00 MEUR'],['Vertriebsmitarbeitende','100'],['F&E-Personal','35'],['Fertigungsmenge','40\'000 Stk'],['Einstellungen Fertigung','50'],['Marktforschungsbericht','ja']])+
+    `<p class="note">Eure ersten Entscheide stehen in Periode 1.</p>`;
+  return `<div class="vh"><h1>Entscheidungen</h1><p>Periode ${k.slice(1)}${k==='P1'?' · Test mit euren echten P1-Entscheiden':''}</p></div>
+  <div class="grid"><aside class="panel decisions" id="decisions" aria-label="Entscheide und Annahmen"></aside><div class="results" id="results"></div></div>`;
+}
+
+function renderView(){
+  const v = state.view, k = state.cur;
+  const html = v==='news' ? viewNews() : v==='charts' ? viewCharts() : v==='reports' ? viewReports() : v==='decisions' ? viewDecisions() : viewInfohub();
+  $('#view').innerHTML = html;
+  if (k!=='P0'){
+    if (v==='decisions'){ renderDecisions(); renderResults('compact'); }
+    if (v==='reports') renderResults('full');
+  }
+}
+function renderAll(){ runAll(); renderPeriods(); renderNav(); renderView(); }
+function refreshResults(){ runAll(); if (state.view==='decisions' || state.view==='reports') renderResults(); else renderView(); }
 
 /* ---------- Ereignisse ---------- */
 document.addEventListener('input', e=>{
@@ -815,7 +1054,18 @@ document.addEventListener('click', e=>{
   if (b.dataset.period){
     const k = b.dataset.period, i = PERIODS.indexOf(k);
     for (let j=1;j<=i;j++) ensurePeriod(PERIODS[j]);
-    state.cur = k; save(); renderAll(); return;
+    state.cur = k; resetArmed = false; save(); renderAll(); return;
+  }
+  if (b.dataset.view){
+    state.view = b.dataset.view; resetArmed = false; save(); renderNav(); renderView();
+    $('#side').classList.remove('open'); $('#menu').setAttribute('aria-expanded','false'); window.scrollTo(0,0); return;
+  }
+  if (b.id==='menu'){ const o = $('#side').classList.toggle('open'); b.setAttribute('aria-expanded', String(o)); return; }
+  if (b.id==='btn-reset-hub'){
+    if (!resetArmed){ resetArmed = true; renderView(); return; }
+    resetArmed = false; const k = state.cur; const d = defaultState();
+    if (d.periods[k]) state.periods[k] = d.periods[k]; else { delete state.periods[k]; ensurePeriod(k); }
+    save(); renderAll(); return;
   }
   if (b.dataset.tab){ state.tab = b.dataset.tab; save(); renderResults(); return; }
   if (b.id==='btn-var'){
@@ -844,6 +1094,12 @@ document.addEventListener('click', e=>{
     if (d.periods[k]) state.periods[k] = d.periods[k]; else { delete state.periods[k]; ensurePeriod(k); }
     save(); renderAll(); return;
   }
+});
+document.addEventListener('mousemove', e=>{
+  const t = e.target.closest && e.target.closest('[data-tip]'), tip = $('#tip');
+  if (!t){ tip.hidden = true; return; }
+  tip.textContent = t.dataset.tip; tip.hidden = false;
+  tip.style.left = Math.min(e.clientX+12, window.innerWidth-tip.offsetWidth-8)+'px'; tip.style.top = (e.clientY-34)+'px';
 });
 renderAll();
 </script>
