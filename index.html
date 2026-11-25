@@ -316,7 +316,10 @@ function simulate(S, P, D){
   // --- Markt 1
   const priceEff = Math.max(1, D.price);
   const pAvg=(5*P.cP+priceEff)/6, wAvg=(5*P.cW+Math.max(D.adv,0.01))/6, vAvg=(5*P.cV+Math.max(D.vt1,1))/6, tAvg=(5*P.cT+tech)/6;
-  const share = Math.exp(-P.e*Math.log(priceEff/pAvg) + P.w*Math.log(Math.max(D.adv,0.01)/wAvg) + P.v*Math.log(Math.max(D.vt1,1)/vAvg) + P.t*(tech-tAvg));
+  // HB 3.1.3: reaktionsarmer Bereich ±5 % um den Branchenpreis, ausserhalb reagiert die Nachfrage stärker
+  const px = Math.log(priceEff/pAvg), band = Math.log(1+P.band);
+  const pxEff = Math.abs(px) <= band ? px : Math.sign(px)*(band + P.eOut*(Math.abs(px)-band));
+  const share = Math.exp(-P.e*pxEff + P.w*Math.log(Math.max(D.adv,0.01)/wAvg) + P.v*Math.log(Math.max(D.vt1,1)/vAvg) + P.t*(tech-tAvg));
   const marketBase = S.marketBase*(1+P.growth);
   const base = marketBase*Math.pow(pAvg/P.refPrice, -P.me);
   const ciF = 1 + P.ciEff*Math.log(1+D.ci);
@@ -391,7 +394,9 @@ function simulate(S, P, D){
   const bs = prod*bsPrice/1e6;
   // --- Sonstige Kosten
   const instM = machines.length*P.inst, instVw = P.instVw;
-  const nach = prod*P.nachEUR/1e6*(otUsed?1:P.nachNoOT);
+  // HB 3.4.4: Nacharbeit steigt mit Technologieindex und bei Überstunden. P0: 31 EUR/Stk (Index 100, keine Ü.), P1: 48 EUR/Stk (Index 102.66, mit Ü.)
+  const nachUnit = P.nachBase*(1 + P.nachTech*(tech-100))*(otUsed ? P.nachOT : 1);
+  const nach = prod*nachUnit/1e6;
   const advTot = D.adv + (D.m2?D.adv2:0);
   const mafo = D.mafo ? 0.1 : 0;
   const feBer = D.oekoG1 + D.oekoG2 + D.wert;
@@ -531,7 +536,7 @@ const BASE_PAR = {
   matPrem:{1:0.20, 2:0.23}, payQuota:{1:1.0, 2:0.9}, wertIdx:1, bsG1:50, bsG2:55, lagerFE:100, lagerMat:50,
   // Anlagen
   machCat:{A:{price:20,life:10,cap:14000,fix:0.3,ui:100,rest:0.2}, B:{price:36.1,life:15,cap:25000,fix:2.5,ui:110,rest:0.3}},
-  avail:1, inst:1, instVw:1, umweltTable:UMWELT, nachEUR:48.1, nachNoOT:0.9, oneOff:0,
+  avail:1, inst:1, instVw:1, umweltTable:UMWELT, nachBase:31.0, nachTech:0.04, nachOT:1.40, band:0.05, eOut:1.5, oneOff:0,
   // F&E
   kTech1:0.209, kTech2:0.372, techAlpha:0.7,
   // Finanzen
@@ -552,7 +557,7 @@ const DEC_P2_ORIG = {price:3010, adv:6.5, vt1:110, ci:0, mafo:true, plan:59000, 
   feG1:38, feG2:70, oekoG1:0, oekoG2:1.0, wert:0, product:'G1', supplier:2, order:70001, prod:62000, buyA:1, buyB:1, sell:['A1','A2'], hires:580, fires:0,
   training:0, prozOpt:0, ratA:0, ratB:0, nk:0.40, kk:0, lk:0, wp:0, div:0};
 // Optimiert über Fertigung, Einstellungen und Anlagen (Bewertung P2 + P3, siehe Variantenvergleich)
-const DEC_P2 = {...DEC_P2_ORIG, plan:48500, prod:58000, buyA:0, buyB:1, sell:['A1'], hires:500};
+const DEC_P2 = {...DEC_P2_ORIG, plan:48500, prod:58000, buyA:0, buyB:1, sell:['A1'], hires:520};
 const IST_P1 = {s1:47000, ga:4000, U:147.10, prod:42000, hkUnit:2172.46, personal:60.92, matAuf:27.30, afa:7.75, sonst:22.44, ebit:10.07, uekInt:0.65, tax:3.86, jue:5.56, uek:10.83, ek:37.08, bsum:61.86, d1:53734, fertEnd:851, prodPerMA:49.08, auslMA:1.0696};
 
 /* ---------- Zustand ---------- */
@@ -562,7 +567,8 @@ const PERIODS = ['P0','P1','P2','P3','P4','P5','P6','P7'];
    - Preis: steigt mit 0.93 × Inflation (P0→P1: +1.86 % bei 2.0 % Inflation)
    - Werbung und Vertrieb: halbe Veränderung der Vorperiode (Trend flacht ab)
    - Technologie: gleiche Zunahme wie in der Vorperiode (F&E-Personal bleibt etwa gleich) */
-const COMP_HIST = {P0:{cP:3000, cW:6.0, cV:100, cT:100}, P1:{cP:3055.8, cW:6.9, cV:105.6, cT:103.04}};
+const RATING_DELTA = {AAA:-0.015, AA:-0.013, A:-0.01, BBB:0, BB:0.01, B:0.011, CCC:0.012, CC:0.013, C:0.014, D:0.015};
+const COMP_HIST ={P0:{cP:3000, cW:6.0, cV:100, cT:100}, P1:{cP:3055.8, cW:6.9, cV:105.6, cT:103.04}};
 const INFL = {P1:0.02, P2:0.03};      // Wirtschaftsprognosen; fehlt eine Angabe, gilt die Vorperiode
 const GROWTH = {P1:0, P2:-0.01};      // Marktwachstum Markt 1: P1 in der Basis enthalten, P2 «stabil, leichte Einbussen»
 function inflOf(k){ for (let i=+k.slice(1); i>=1; i--){ if (INFL['P'+i]!==undefined) return INFL['P'+i]; } return 0.02; }
@@ -577,7 +583,7 @@ const IST_KPI = {
   P0:{aktie:186.44, U:129.00, ur:0.0506, jue:6.52, ek:31.52, div:0, cumDiv:0, fkq:0.6367, kz:69.97, pq:100, bek:49.25, tech:100.00, sold_:43000, ebit:13.91, uek:43.37, rating:'BB', prod:40000, s1:43000, ga:0},
   P1:{aktie:236.18, U:147.10, ur:0.0378, jue:5.56, ek:37.08, div:0, cumDiv:0, fkq:0.4005, kz:72.63, pq:100, bek:49.04, tech:102.66, sold_:51000, ebit:10.07, uek:10.83, rating:'BBB', prod:42000, s1:47000, ga:4000}
 };
-const STORE_KEY = 'hp-sim-v3';
+const STORE_KEY = 'hp-sim-v4';
 let state = null;
 function variantOf(period, name, start, par, dec){
   const r = simulate(clone(start), effPar(period, par), clone(dec));
@@ -625,6 +631,9 @@ function runAll(){
     // Rahmendaten immer aus den Unterlagen, gespeicherte Werte werden ignoriert
     const base = k==='P1' ? parP1() : k==='P2' ? parP2() : {...parP2(), gaMax:0, oneOff:0};
     const par = effPar(k, base);
+    // HB 3.6.2/3.6.4: bis P3 kein Zinsnachteil beim ÜK; ab P4 wirkt das Rating der Vorperiode auf alle Kreditzinsen
+    if (pnum(k)>=4){ const pr = cache[prevOf(k)]; const dlt = RATING_DELTA[pr ? pr.r.rating : 'BBB'] || 0;
+      par.uekRate += dlt; par.kkRate += dlt; par.lkRate += dlt; }
     const r = simulate(start, par, dec);
     cache[k] = {start, r, par, dec};
     start = clone(r.end);
@@ -708,12 +717,15 @@ const RD_ROWS = [
   ['oneOff','Einmalige Kosten (ERP-Upgrade)','MEUR',2],['machCat.A.price','Kaufpreis Anlage A','MEUR',2],['machCat.B.price','Kaufpreis Anlage B','MEUR',2],['inst','Instandhaltung je Anlage','MEUR',2],
   ['otStaff','Max. Überstunden Personal','',1,'pct'],['otMach','Max. Überstunden Anlagen','',1,'pct'],['otFix','Zusatzschicht bei Überstunden','MEUR',2],
   ['uekRate','Zins Überziehungskredit','',1,'pct'],['tax','Steuersatz','',0,'pct'],
-  ['fl.fert','Fluktuation Fertigung','',1,'pct'],['fehl','Fehlzeiten Fertigung','',1,'pct'],['newProd','Leistung neuer Mitarbeitender','',0,'pct'],['nachEUR','Nacharbeit','EUR/Stk',1]];
+  ['fl.fert','Fluktuation Fertigung','',1,'pct'],['fehl','Fehlzeiten Fertigung','',1,'pct'],['newProd','Leistung neuer Mitarbeitender','',0,'pct'],['nachBase','Nacharbeit Basis (Index 100, ohne Ü.)','EUR/Stk',1],
+  ['kkRate','Zins kurzfristiger Kredit (ab P4)','',1,'pct'],['lkRate','Zins langfristiger Kredit (ab P4)','',1,'pct']];
 const WP1_KEYS = ['wage.fert','wage.fe','wage.vt','wage.ek','wage.vw','hireCost','fireCost','gaPrice','gaMax','otStaff','otMach'];
 const WP2_KEYS = ['wage.fert','wage.fe','wage.vt','wage.ek','wage.vw','gaPrice','gaMax','fx','bsG1','bsG2','tr1','tr2','lagerMat','lagerFE','oneOff','machCat.A.price','machCat.B.price','uekRate'];
-const CALIB_KEYS = ['fl.fert','fehl','newProd','nachEUR'];
+const CALIB_KEYS = ['fl.fert','fehl','newProd','nachBase'];
 function rdSource(key, k){
   const n = pnum(k);
+  if (key==='kkRate' || key==='lkRate') return n>=4 ? 'Annahme (Zins noch nicht bekannt) + Rating-Zuschlag HB 3.6.4' : 'Annahme, Kredite erst ab P4';
+  if (key==='uekRate' && n>=4) return 'Prognose P2 + Rating-Zuschlag der Vorperiode (HB 3.6.4)';
   if (CALIB_KEYS.includes(key)) return 'aus Bericht P1 abgeleitet';
   if (n===1 && ['bsG2','tr2','fx','machCat.B.price'].includes(key)) return 'erst ab P2 relevant';
   if (n===1 && key==='uekRate') return 'aus Bericht P1 abgeleitet (0.65 / 10.83)';
