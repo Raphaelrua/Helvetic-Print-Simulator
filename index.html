@@ -604,7 +604,10 @@ function runAll(){
     if (!state.periods[k]) break;
     if (k==='P2') start = clone(START_P2);
     const p = state.periods[k];
-    const r = simulate(start, p.par, p.dec);
+    if (pnum(k)>=2 && p.dec.supplier===0) p.dec.supplier = 2;
+    const NEUTRAL = {ci:0, m2:false, adv2:0, vt2:0, feG2:0, oekoG1:0, oekoG2:0, supplier:0, order:0, buyB:0, wert:0, training:0, prozOpt:0, ratA:0, ratB:0, nk:0.40, wp:0, div:0, product:'G1', kk:0, lk:0};
+    const dec = {...p.dec}; for (const f in NEUTRAL) if (!availIn(f, k)) dec[f] = NEUTRAL[f];
+    const r = simulate(start, p.par, dec);
     cache[k] = {start, r};
     start = clone(r.end);
     // eingetragene Ist-Werte überschreiben den Startzustand der nächsten Periode
@@ -672,14 +675,29 @@ function fieldHTML(scope, f, obj, startMachines){
   const st = kind==='pct' ? +(step*100).toFixed(4) : step;
   return `<div class="field"><label for="${id}">${esc(label)}</label><div class="in"><input id="${id}" type="number" inputmode="decimal" step="${st}" value="${shown}" data-scope="${scope}" data-k="${k}" ${kind==='pct'?'data-pct="1"':''}><span class="u">${esc(kind==='pct'?'%':unit)}</span></div>${hint?`<div class="hint">${esc(hint)}</div>`:''}</div>`;
 }
+/* Ab welcher Periode ein Entscheid freigeschaltet ist (P1 laut Entscheidungsprotokoll, P2 laut Wirtschaftsprognose P2).
+   Alles, was erst später kommt, bleibt verborgen und neutral. Werte ohne Angabe gelten ab P1. */
+const AVAIL = {ci:2, m2:2, p2:2, adv2:2, vt2:2, feG2:2, oekoG1:2, oekoG2:2, supplier:2, order:2, buyB:2,
+  wert:3, training:3, prozOpt:3, ratA:3, ratB:3, nk:3, wp:3, div:3, product:4, kk:4, lk:4};
+const LATER_TXT = {3:'ab P3 (sobald in der Wirtschaftsprognose freigeschaltet): Wertanalyse, Training, Prozessoptimierung, Rationalisierung, Personalnebenkosten, Wertpapiere, Dividende',
+  4:'ab P4: Einführung Gen. 2, kurz- und langfristige Kredite'};
+const pnum = k => +k.slice(1);
+function availIn(field, k){ return (AVAIL[field]||1) <= pnum(k); }
 function renderDecisions(){
   const k = state.cur, p = state.periods[k], st = cache[k].start;
   const open = JSON.parse(sessionGet('open')||'{}');
   let h = '';
   DEC_GROUPS.forEach((g,i)=>{
+    const fs = g.f.filter(f=>availIn(f[0], k)).map(f=>{
+      if (f[0]==='supplier') return [f[0],f[1],f[2], f[3].filter(o=>o[0]!==0)];
+      return f;
+    });
+    if (!fs.length) return;
     const isOpen = open['d'+i]!==undefined ? open['d'+i] : !!g.open;
-    h += `<details class="grp" data-key="d${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${g.f.map(f=>fieldHTML('dec',f,p.dec,st.machines)).join('')}</div></details>`;
+    h += `<details class="grp" data-key="d${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${fs.map(f=>fieldHTML('dec',f,p.dec,st.machines)).join('')}</div></details>`;
   });
+  const later = Object.entries(LATER_TXT).filter(([n])=>+n>pnum(k)).map(([n,t])=>t);
+  if (later.length) h += `<div class="body" style="padding:10px 16px;border-bottom:1px solid var(--line)"><p class="note" style="margin:0">In ${k} noch nicht wählbar: ${later.map(esc).join('; ')}.</p></div>`;
   PAR_GROUPS.forEach((g,i)=>{
     const isOpen = open['p'+i]!==undefined ? open['p'+i] : false;
     h += `<details class="grp" data-key="p${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${g.f.map(f=>fieldHTML('par',f,p.par,[])).join('')}</div></details>`;
