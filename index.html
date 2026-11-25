@@ -326,7 +326,7 @@ function simulate(S, P, D){
   let d2 = 0, p2eur = 0;
   if (D.m2 && D.vt2>0 && D.p2>0){
     p2eur = D.p2 / P.fx;
-    d2 = P.m2Base * Math.pow(p2eur/P.m2Ref, -P.m2e) * Math.pow(Math.max(D.adv2,0.01)/P.m2W, P.w) * Math.pow(D.vt2/P.m2V, P.v);
+    d2 = P.m2Base * Math.pow(p2eur/P.m2Ref, -P.m2e) * (D.adv2>0 ? Math.pow(D.adv2/P.m2W, P.w) : 1) * Math.pow(D.vt2/P.m2V, P.v);
   }
   // --- Lager und Absatz
   const fgWrite = launch ? S.fgValue : 0;
@@ -677,10 +677,13 @@ function fieldHTML(scope, f, obj, startMachines){
 }
 /* Ab welcher Periode ein Entscheid freigeschaltet ist (P1 laut Entscheidungsprotokoll, P2 laut Wirtschaftsprognose P2).
    Alles, was erst später kommt, bleibt verborgen und neutral. Werte ohne Angabe gelten ab P1. */
-const AVAIL = {ci:2, m2:2, p2:2, adv2:2, vt2:2, feG2:2, oekoG1:2, oekoG2:2, supplier:2, order:2, buyB:2,
-  wert:3, training:3, prozOpt:3, ratA:3, ratB:3, nk:3, wp:3, div:3, product:4, kk:4, lk:4};
-const LATER_TXT = {3:'ab P3 (sobald in der Wirtschaftsprognose freigeschaltet): Wertanalyse, Training, Prozessoptimierung, Rationalisierung, Personalnebenkosten, Wertpapiere, Dividende',
-  4:'ab P4: Einführung Gen. 2, kurz- und langfristige Kredite'};
+// Quellen: Entscheidungsprotokoll P1, Wirtschaftsprognose P2, Moodle-Hinweise (Gen. 2 und Kredite ab P4).
+// 99 = in keiner Unterlage freigeschaltet, bleibt gesperrt bis eine neue Prognose es nennt.
+const AVAIL = {ci:2, m2:2, p2:2, vt2:2, feG2:2, oekoG1:2, oekoG2:2, supplier:2, order:2, buyB:2,
+  product:4, kk:4, lk:4,
+  adv2:99, wert:99, training:99, prozOpt:99, ratA:99, ratB:99, nk:99, wp:99, div:99};
+const LATER_TXT = {4:'ab P4: Einführung Gen. 2, kurz- und langfristige Kredite (laut Prognose P2 und Moodle-Hinweisen)',
+  99:'Werbung Markt 2, Wertanalyse, Training, Prozessoptimierung, Rationalisierung, Personalnebenkosten, Wertpapiere und Dividende sind in euren Unterlagen noch nicht freigeschaltet'};
 const pnum = k => +k.slice(1);
 function availIn(field, k){ return (AVAIL[field]||1) <= pnum(k); }
 function renderDecisions(){
@@ -697,7 +700,7 @@ function renderDecisions(){
     h += `<details class="grp" data-key="d${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${fs.map(f=>fieldHTML('dec',f,p.dec,st.machines)).join('')}</div></details>`;
   });
   const later = Object.entries(LATER_TXT).filter(([n])=>+n>pnum(k)).map(([n,t])=>t);
-  if (later.length) h += `<div class="body" style="padding:10px 16px;border-bottom:1px solid var(--line)"><p class="note" style="margin:0">In ${k} noch nicht wählbar: ${later.map(esc).join('; ')}.</p></div>`;
+  if (later.length) h += `<div class="body" style="padding:10px 16px;border-bottom:1px solid var(--line)"><p class="note" style="margin:0">In ${k} nicht wählbar: ${later.map(esc).join('; ')}. Freigeschaltet ist nur, was im Entscheidungsprotokoll P1, in der Wirtschaftsprognose P2 oder in den Moodle-Hinweisen steht.</p></div>`;
   PAR_GROUPS.forEach((g,i)=>{
     const isOpen = open['p'+i]!==undefined ? open['p'+i] : false;
     h += `<details class="grp" data-key="p${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${g.f.map(f=>fieldHTML('par',f,p.par,[])).join('')}</div></details>`;
