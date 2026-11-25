@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Helvetic Print Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Entscheidungsspalte links (Formular), Ergebnisse rechts in Tabs; auf dem Handy untereinander. Farben nach Druckfarben: Cyan als Akzent, Magenta für Hinweise. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#15212b; --muted:#5b6b78; --line:#d9e0e6; --soft:#e9eef2;
+  --accent:#0a7fa6; --accent-ink:#ffffff; --accent-soft:#dff1f7;
+  --good:#1f8a4c; --warn:#b26a00; --bad:#c0244f; --good-soft:#e3f4ea; --warn-soft:#fbf0dc; --bad-soft:#fbe3ea;
+  --input:#fbfcfd;
+  --f-head:"Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", "Segoe UI", system-ui, sans-serif;
+  --f-num:"JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161c; --panel:#162029; --ink:#e6edf2; --muted:#93a4b1; --line:#2a3946; --soft:#1d2a35;
+  --accent:#3bb6dd; --accent-ink:#06202b; --accent-soft:#143341;
+  --good:#4cc283; --warn:#e3a443; --bad:#f06b8f; --good-soft:#15301f; --warn-soft:#33270f; --bad-soft:#3a1622;
+  --input:#111b23; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --panel:#162029; --ink:#e6edf2; --muted:#93a4b1; --line:#2a3946; --soft:#1d2a35;
+  --accent:#3bb6dd; --accent-ink:#06202b; --accent-soft:#143341;
+  --good:#4cc283; --warn:#e3a443; --bad:#f06b8f; --good-soft:#15301f; --warn-soft:#33270f; --bad-soft:#3a1622;
+  --input:#111b23; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+h1,h2,h3{font-family:var(--f-head);text-wrap:balance;margin:0}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.05rem;font-weight:600}
+h3{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.num,td.n,th.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.wrap{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+header.top p{margin:.25rem 0 0;color:var(--muted);max-width:70ch}
+.periods{display:flex;flex-wrap:wrap;gap:6px}
+.periods button{font:600 .85rem var(--f-head);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:.45rem .8rem;border-radius:6px;cursor:pointer}
+.periods button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.periods button small{font:400 .7rem var(--f-body);opacity:.8;margin-left:4px}
+.grid{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.decisions{padding:4px 0}
+details.grp{border-bottom:1px solid var(--line)}
+details.grp:last-child{border-bottom:0}
+details.grp>summary{cursor:pointer;list-style:none;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font:600 .92rem var(--f-head)}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::after{content:"+";color:var(--muted);font-family:var(--f-num)}
+details.grp[open]>summary::after{content:"−"}
+details.grp .body{padding:0 16px 14px;display:flex;flex-direction:column;gap:8px}
+.sub{font:600 .72rem var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:6px}
+.field{display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:8px;align-items:center}
+.field label{font-size:.85rem}
+.field .hint{grid-column:1/-1;font-size:.74rem;color:var(--muted);margin-top:-4px}
+.field .in{display:flex;align-items:center;border:1px solid var(--line);border-radius:5px;background:var(--input)}
+.field .in:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.field input,.field select{width:100%;min-width:0;border:0;background:transparent;color:var(--ink);font:500 .85rem var(--f-num);padding:.38rem .45rem;text-align:right}
+.field select{text-align:left;font-family:var(--f-body)}
+.field input:focus,.field select:focus{outline:none}
+.field .u{font-size:.7rem;color:var(--muted);padding-right:.45rem;white-space:nowrap}
+.field.changed .in{border-color:var(--warn)}
+.chk{display:flex;align-items:center;gap:8px;font-size:.85rem}
+.chk input{accent-color:var(--accent);width:16px;height:16px}
+.mach{display:flex;flex-direction:column;gap:4px}
+.mach .row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:.8rem}
+.mach .row .meta{color:var(--muted);font-family:var(--f-num);font-size:.74rem}
+.results{display:flex;flex-direction:column;gap:16px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .l{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font:500 1.35rem var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .d{font-size:.74rem;color:var(--muted)}
+.kpi.hl{border-color:var(--accent);background:var(--accent-soft)}
+.warns{display:flex;flex-direction:column;gap:6px}
+.w{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:6px;font-size:.85rem;border-left:4px solid}
+.w.bad{background:var(--bad-soft);border-color:var(--bad)}
+.w.warn{background:var(--warn-soft);border-color:var(--warn)}
+.w.ok{background:var(--good-soft);border-color:var(--good)}
+.w b{font-family:var(--f-head)}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--line);padding:0 8px}
+.tabs button{font:600 .82rem var(--f-head);background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:.65rem .7rem;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--accent)}
+.tabpanel{padding:14px 16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{padding:5px 8px;border-bottom:1px solid var(--soft);text-align:left;vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.04em}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.sum td{font-weight:600;border-top:1px solid var(--line)}
+tr.res td{font-weight:700;background:var(--soft)}
+td.pos{color:var(--good)} td.neg{color:var(--bad)}
+.dev-ok{color:var(--good)} .dev-mid{color:var(--warn)} .dev-bad{color:var(--bad)}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:150px minmax(0,1fr) 90px;gap:10px;align-items:center;font-size:.8rem}
+@media (max-width:520px){.bar{grid-template-columns:100px minmax(0,1fr) 70px}}
+.bar .track{height:14px;background:var(--soft);border-radius:3px;position:relative;overflow:hidden}
+.bar .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:3px}
+.bar .fill.alt{background:var(--muted)}
+.bar .fill.warn{background:var(--warn)}
+.bar .v{text-align:right;font-family:var(--f-num)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.note{font-size:.8rem;color:var(--muted);max-width:80ch}
+.btn{font:600 .82rem var(--f-head);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:.45rem .8rem;border-radius:6px;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:focus-visible,.periods button:focus-visible,.tabs button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+textarea{width:100%;min-height:120px;font:12px var(--f-num);background:var(--input);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font:600 .72rem var(--f-body)}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.liq{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-soft)}
+.liq .big{font:500 1.7rem var(--f-num)}
+footer{font-size:.75rem;color:var(--muted);max-width:90ch}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Helvetic Print Simulator</h1>
+      <p>Eigenes Rechenmodell für Unternehmen 2, abgestimmt auf die TOPSIM-Berichte P0 und P1. Entscheide links ändern, Ergebnis rechts lesen. Alle Werte sind Schätzungen, kein offizielles Ergebnis.</p>
+    </div>
+    <nav class="periods" id="periods" aria-label="Periode wählen"></nav>
+  </header>
+  <div class="grid">
+    <aside class="panel decisions" id="decisions" aria-label="Entscheide und Annahmen"></aside>
+    <main class="results" id="results"></main>
+  </div>
+  <footer>Grundlage: Teilnehmerhandbuch v15.8, Wirtschaftsprognosen P1 und P2, Sammelberichte P0 und P1 (Unternehmen 2). Die Absatzfunktion ist aus dem Marktforschungsbericht P1 geschätzt (Abweichung je Unternehmen unter 1 %). Kostenrechnung, Liquidität und Bilanz rechnen P1 auf ±0.1 MEUR nach. Eingaben werden nur in diesem Browser gespeichert.</footer>
+</div>
+
+<script>
+/*ENGINE-START*/
+const GEB_AFA = 1.0, MIN_CASH = 0.1, FIX_EQ = 24.0;
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function techGain(k, ma, a){return ma>0 ? k*Math.pow(ma, a) : 0;}
+function interp(table, x){
+  if (x >= table[table.length-1][0]) return table[table.length-1][1];
+  if (x <= table[0][0]) return table[0][1];
+  for (let i=1;i<table.length;i++){ if (x <= table[i][0]){ const [x0,y0]=table[i-1],[x1,y1]=table[i]; return y0+(y1-y0)*(x-x0)/(x1-x0);} }
+  return 0;
+}
+function tierPrice(par, sup, qty, gen2){
+  if (sup===0) return par.legacyPrice;
+  const tiers = par.matTiers[sup]; // [[limit, g1, g2], ...]
+  for (const t of tiers){ if (qty <= t[0]) return gen2 ? t[2] : t[1]; }
+  const last = tiers[tiers.length-1]; return gen2 ? last[2] : last[1];
+}
+function sozialCost(fires, start, par){
+  if (fires<=0 || start<=0) return 0;
+  const thr = par.spThreshold*start; const extra = Math.max(0, fires-thr); if (extra<=0) return 0;
+  const share = fires/start; const per = share<0.3 ? 15000 : share<0.5 ? 20000 : 25000;
+  return extra*per/1e6;
+}
+function ratingFor(ekq, jue, uekShare){
+  const cls=['CCC','B','BB','BBB','A','AA'];
+  let i = ekq>=0.7?4 : ekq>=0.55?3 : ekq>=0.33?2 : ekq>=0.2?1 : 0;
+  if (jue<0) i--; if (uekShare>0.6) i--;
+  return cls[Math.max(0,i)];
+}
+
+function simulate(S, P, D){
+  const W = [], R = {};
+  const gen2 = D.product === 'G2';
+  const launch = gen2 && S.product !== 'G2';
+  // --- F&E
+  const techG1 = S.techG1 + techGain(P.kTech1, D.feG1, P.techAlpha);
+  const techG2 = S.techG2 + techGain(P.kTech2, D.feG2, P.techAlpha);
+  const tech = gen2 ? techG2 : techG1;
+  if (gen2 && techG2 < techG1) W.push(['bad','Gen. 2 liegt technisch unter Gen. 1','Die Einführung lohnt sich laut Prognose erst, wenn der Index über dem Vorgänger liegt.']);
+  if (gen2 && techG2 < 100) W.push(['bad','Gen. 2 nicht marktreif','Technologieindex unter 100: Kunden meiden das Produkt.']);
+  // --- Anlagen
+  const sold = S.machines.filter(m => (D.sell||[]).includes(m.id));
+  let machines = S.machines.filter(m => !(D.sell||[]).includes(m.id)).map(m => ({...m}));
+  const desinvErl = sold.reduce((a,m)=>a+m.rbw*m.rest,0);
+  const aoAfa = sold.reduce((a,m)=>a+m.rbw*(1-m.rest),0);
+  let invest = 0;
+  for (const typ of ['A','B']){
+    const n = typ==='A'?D.buyA:D.buyB; const c = P.machCat[typ];
+    for (let i=0;i<n;i++){
+      const cnt = machines.filter(m=>m.typ===typ).length + S.machines.filter(m=>m.typ===typ && (D.sell||[]).includes(m.id)).length;
+      const ids = [...S.machines, ...machines].filter(m=>m.typ===typ).map(m=>+m.id.slice(1));
+      const id = typ + (Math.max(0,...ids)+1);
+      machines.push({id, typ, cap:c.cap, rbw:c.price, rl:c.life, afa:c.price/c.life, fix:c.fix, ui:c.ui, rest:c.rest, isNew:true});
+      invest += c.price;
+    }
+    if (machines.filter(m=>m.typ===typ).length > 9) W.push(['bad',`Mehr als 9 Anlagen Typ ${typ}`,'Pro Typ sind höchstens neun Anlagen erlaubt.']);
+  }
+  if (machines.length===0) W.push(['bad','Keine Anlage mehr','Mindestens eine Anlage muss im Bestand bleiben.']);
+  const ratIdx = {A: S.ratIdx.A + (D.ratA>0 ? 0.05*Math.pow(D.ratA,0.7) : 0), B: S.ratIdx.B + (D.ratB>0 ? 0.05*Math.pow(D.ratB,0.7) : 0)};
+  const machCap = machines.reduce((a,m)=>a+m.cap*(ratIdx[m.typ]||1)*P.avail,0);
+  const afaMach = machines.reduce((a,m)=>a+(m.rl>0?m.afa:0),0);
+  const machFix = machines.reduce((a,m)=>a+m.fix,0);
+  const uiAvg = machines.length ? machines.reduce((a,m)=>a+m.ui,0)/machines.length : 100;
+  const umwelt = interp(P.umweltTable, uiAvg);
+  // --- Personal Fertigung
+  const flF = Math.round(P.fl.fert*S.staff.fert);
+  const fertEnd = Math.max(0, S.staff.fert + D.hires - D.fires - flF);
+  const newShare = fertEnd>0 ? D.hires/fertEnd : 0;
+  const einarb = 1 - (1-P.newProd)*newShare;
+  const prozIdx = S.prozIdx + (D.prozOpt>0 ? 0.04*Math.pow(D.prozOpt/3,0.7) : 0);
+  const qualIdx = 1 + P.trainEff*D.training;
+  const prodI = einarb*qualIdx*prozIdx*P.motiv;
+  const prodPerMA = (gen2?P.prodG2:P.prodG1)*prodI*P.prodII;
+  const fehl = fertEnd*P.fehl, einsetzbar = fertEnd - fehl;
+  const capUnit = gen2 ? P.capG2 : 1;
+  const maxMach = machCap*(1+P.otMach)/capUnit;
+  const maxStaff = einsetzbar*(1+P.otStaff)*prodPerMA;
+  let prod = Math.max(0, Math.min(D.prod, maxMach, maxStaff));
+  if (prod < D.prod - 0.5){
+    const lim = maxMach < maxStaff ? 'Anlagenkapazität' : 'Personal';
+    W.push(['bad',`Produktion gekürzt auf ${fmt(prod,0)} Stk`,`Engpass: ${lim}. Geplant waren ${fmt(D.prod,0)} Stk. Max. Anlagen ${fmt(maxMach,0)}, max. Personal ${fmt(maxStaff,0)} (inkl. Überstunden).`]);
+  }
+  const needMA = prodPerMA>0 ? prod/prodPerMA : 0;
+  const otMA = Math.max(0, needMA - einsetzbar);
+  const otUsed = otMA > 0.5 || prod*capUnit > machCap + 0.5;
+  if (otUsed) W.push(['warn','Überstunden nötig',`Zusatzschicht ${fmt(P.otFix,2)} MEUR plus Zuschläge auf ${fmt(otMA,0)} MA-Äquivalente. Mehr Personal oder Kapazität kann günstiger sein.`]);
+  // --- Markt 1
+  const priceEff = Math.max(1, D.price);
+  const pAvg=(5*P.cP+priceEff)/6, wAvg=(5*P.cW+Math.max(D.adv,0.01))/6, vAvg=(5*P.cV+Math.max(D.vt1,1))/6, tAvg=(5*P.cT+tech)/6;
+  const share = Math.exp(-P.e*Math.log(priceEff/pAvg) + P.w*Math.log(Math.max(D.adv,0.01)/wAvg) + P.v*Math.log(Math.max(D.vt1,1)/vAvg) + P.t*(tech-tAvg));
+  const marketBase = S.marketBase*(1+P.growth);
+  const base = marketBase*Math.pow(pAvg/P.refPrice, -P.me);
+  const ciF = 1 + P.ciEff*Math.log(1+D.ci);
+  const launchF = launch ? 1+P.launchBoost : 1;
+  let d1 = D.vt1>0 ? base*share*ciF*launchF*(1+P.adj) + P.redis : 0;
+  // --- Markt 2
+  let d2 = 0, p2eur = 0;
+  if (D.m2 && D.vt2>0 && D.p2>0){
+    p2eur = D.p2 / P.fx;
+    d2 = P.m2Base * Math.pow(p2eur/P.m2Ref, -P.m2e) * Math.pow(Math.max(D.adv2,0.01)/P.m2W, P.w) * Math.pow(D.vt2/P.m2V, P.v);
+  }
+  // --- Lager und Absatz
+  const fgWrite = launch ? S.fgValue : 0;
+  const fgStart = launch ? 0 : S.fgStock, fgStartVal = launch ? 0 : S.fgValue;
+  const avail = fgStart + prod;
+  const ga = Math.min(D.ga, P.gaMax, avail);
+  if (D.ga > P.gaMax) W.push(['warn','Grossabnehmer: Menge über Angebot',`Angebot nur bis ${fmt(P.gaMax,0)} Stk.`]);
+  const s1 = Math.min(d1, avail-ga);
+  const s2 = Math.min(d2, avail-ga-s1);
+  const sold_ = ga+s1+s2;
+  const unmet1 = d1 - s1, unmet2 = d2 - s2;
+  if (unmet1 > 50) W.push(['bad',`Lieferunfähig Markt 1: ${fmt(unmet1,0)} Stk`,'Nicht gedeckte Nachfrage geht an die Konkurrenz und senkt die Kundenzufriedenheit der nächsten Periode.']);
+  const u1 = s1*D.price/1e6, ugA = ga*P.gaPrice/1e6, u2 = s2*p2eur/1e6;
+  const U = u1+ugA+u2;
+  // --- übriges Personal
+  const ratioU = S.prevRevenue>0 ? U/S.prevRevenue : 1;
+  const ekEnd = Math.round(S.staff.ek*Math.pow(ratioU, P.ekEl));
+  const vwEnd = Math.round(S.staff.vw*Math.pow(ratioU, P.vwEl));
+  const feEnd = D.feG1 + D.feG2, vtEnd = D.vt1 + (D.m2?D.vt2:0);
+  const dept = {};
+  for (const [k,start,end,rate] of [['ek',S.staff.ek,ekEnd,P.fl.ek],['vw',S.staff.vw,vwEnd,P.fl.vw],['fe',S.staff.fe,feEnd,P.fl.fe],['vt',S.staff.vt,vtEnd,P.fl.vt]]){
+    const fl = Math.round(rate*start);
+    dept[k] = {start, end, fl, hires:Math.max(0,end-start+fl), fires:Math.max(0,start-fl-end)};
+  }
+  dept.fert = {start:S.staff.fert, end:fertEnd, fl:flF, hires:D.hires, fires:D.fires};
+  const wage = P.wage;
+  const loehne = {
+    ek: ekEnd*wage.ek/1e3, vw: vwEnd*wage.vw/1e3, fe: feEnd*wage.fe/1e3, vt: vtEnd*wage.vt/1e3,
+    fert: fertEnd*wage.fert/1e3 + otMA*wage.fert*P.otFactor/1e3
+  };
+  const otCost = otMA*wage.fert*P.otFactor/1e3;
+  const sumL = Object.values(loehne).reduce((a,b)=>a+b,0);
+  const hireCost = Object.values(dept).reduce((a,d)=>a+d.hires,0)*P.hireCost/1e3;
+  const fireCost = Object.values(dept).reduce((a,d)=>a+d.fires,0)*P.fireCost/1e3;
+  const trainCost = D.training*P.trainCost*fertEnd/1e6;
+  let sozial = 0; for (const d of Object.values(dept)) sozial += sozialCost(d.fires, d.start, P);
+  const totFires = Object.values(dept).reduce((a,d)=>a+d.fires,0);
+  const totStart = Object.values(dept).reduce((a,d)=>a+d.start,0);
+  if (totFires > 50 || totFires >= 0.05*totStart) W.push(['bad',`Massenentlassung: ${fmt(totFires,0)} Entlassungen`,'Sozialplan mit der Gewerkschaft schriftlich vereinbaren (Formular). Ohne Vereinbarung über 100 MA: Strafe mind. 1.5 Jahreslöhne pro MA.']);
+  const nk = sumL*D.nk, pens = sumL*P.pension;
+  const personal = sumL + nk + pens + hireCost + fireCost + trainCost + sozial;
+  if (D.nk < 0.37) W.push(['bad','Personalnebenkosten unter 37 %','Der gesetzliche Mindestsatz ist 37 %.']);
+  // --- Material
+  const matNeed = prod/P.wertIdx;
+  const sup = D.supplier;
+  const order = sup===0 ? Math.max(0, matNeed - S.matStock) : D.order;
+  const price = tierPrice(P, sup, order, gen2);
+  const fromStock = Math.min(S.matStock, matNeed);
+  const fromOrder = Math.min(order, matNeed-fromStock);
+  const short = Math.max(0, matNeed - fromStock - fromOrder);
+  const shortPrice = price*(1+(sup===0?0:P.matPrem[sup]));
+  const purchase = (order*price + short*shortPrice)/1e6;
+  const totUnits = S.matStock + order + short;
+  const avgMat = totUnits>0 ? (S.matValue + purchase)/totUnits : price/1e6;
+  const matUsedVal = matNeed*avgMat;
+  const matEnd = totUnits - matNeed, matEndVal = matEnd*avgMat;
+  const quota = sup===0 ? 1 : P.payQuota[sup];
+  const matPaidNow = purchase*quota, payablesEnd = purchase*(1-quota);
+  if (short > 50) W.push(['warn',`Nachlieferung ${fmt(short,0)} Einheiten`,`Zu wenig bestellt: Aufschlag ${fmt((sup===0?0:P.matPrem[sup])*100,0)} % auf ${fmt(price,0)} EUR.`]);
+  if (matEnd > 50) W.push(['warn',`Materiallager ${fmt(matEnd,0)} Einheiten`,`Lagerkosten ${fmt(matEnd*P.lagerMat/1e6,2)} MEUR, Kapital gebunden ${fmt(matEndVal,2)} MEUR.`]);
+  const bsPrice = gen2 ? P.bsG2 : P.bsG1;
+  const bs = prod*bsPrice/1e6;
+  // --- Sonstige Kosten
+  const instM = machines.length*P.inst, instVw = P.instVw;
+  const nach = prod*P.nachEUR/1e6*(otUsed?1:P.nachNoOT);
+  const advTot = D.adv + (D.m2?D.adv2:0);
+  const mafo = D.mafo ? 0.1 : 0;
+  const feBer = D.oekoG1 + D.oekoG2 + D.wert;
+  const transport = (s1*P.tr1 + s2*P.tr2)/1e6;
+  const fgEnd = avail - sold_;
+  const lagerFE = fgEnd*P.lagerFE/1e6, lagerM = matEnd*P.lagerMat/1e6;
+  const otFix = otUsed ? P.otFix : 0;
+  const sonst = machFix + otFix + instM + instVw + D.ratA + D.ratB + D.prozOpt + umwelt + nach + advTot + mafo + D.ci + feBer + transport + lagerFE + lagerM + P.oneOff;
+  // --- Herstellkosten und Lager FE
+  const persOf = l => l*(1+D.nk+P.pension);
+  const hkEinkauf = matUsedVal + bs + lagerM + persOf(loehne.ek) + dept.ek.hires*P.hireCost/1e3 + 0.05*GEB_AFA;
+  const fertPers = persOf(loehne.fert) + (dept.fert.hires*P.hireCost + dept.fert.fires*P.fireCost)/1e3 + trainCost + sozialCost(dept.fert.fires, dept.fert.start, P);
+  const hkFert = fertPers + nach + 0.7*GEB_AFA + afaMach + aoAfa + machFix + otFix + instM + D.ratA + D.ratB + D.prozOpt + umwelt;
+  const hk = hkEinkauf + hkFert;
+  const hkUnit = prod>0 ? hk/prod*1e6 : 0;
+  const avgFG = (fgStart+prod)>0 ? (fgStartVal + hk)/(fgStart+prod) : 0;
+  const cogs = sold_*avgFG, fgEndVal = fgEnd*avgFG;
+  const dBest = fgEndVal - S.fgValue + fgWrite; // Abschreibung FE separat
+  const afa = afaMach + aoAfa + GEB_AFA + fgWrite;
+  const matAuf = matUsedVal + bs;
+  const ebit = U + dBest - matAuf - personal - afa - sonst;
+  // --- Finanzierung (iterativ, ÜK-Zins hängt vom ÜK ab)
+  const kkInt = D.kk*P.kkRate, wpInt = D.wp*P.wpRate;
+  const lks = (S.lks||[]).map(l=>({...l}));
+  if (D.lk>0) lks.push({amount:D.lk, rate:P.lkRate, bal:D.lk, isNew:true});
+  let lkTilg = 0, lkInt = 0;
+  for (const l of lks){ lkInt += l.bal*l.rate; if (!l.isNew){ const t=Math.min(l.bal, l.amount/10); lkTilg+=t; l.bal-=t; } delete l.isNew; }
+  const lkBal = lks.reduce((a,l)=>a+l.bal,0);
+  const inNo = 0.8*(u1+u2) + ugA + S.receivables + desinvErl + D.kk + D.lk + S.wp + wpInt;
+  const persCash = personal - pens;
+  const div = Math.min(D.div, S.vortrag);
+  if (D.div > S.vortrag+1e-9) W.push(['warn','Dividende über Gewinnvortrag',`Maximal ${fmt(S.vortrag,2)} MEUR.`]);
+  let uek = 0, tax = 0, ebt = 0, uekInt = 0, loss = S.lossCarry||0, lossNew = loss;
+  for (let i=0;i<40;i++){
+    uekInt = uek*P.uekRate;
+    ebt = ebit + wpInt - kkInt - lkInt - uekInt;
+    const taxable = ebt - loss;
+    tax = taxable>0 ? taxable*P.tax : 0;
+    lossNew = ebt<0 ? loss - ebt : Math.max(0, loss - ebt);
+    const outNo = matPaidNow + S.payables + bs + persCash + sonst + S.uek + S.kk + lkTilg + kkInt + lkInt + invest + D.wp + div + tax;
+    const gap = outNo + uekInt - inNo - S.cash + MIN_CASH;
+    const next = Math.max(0, gap);
+    if (Math.abs(next-uek) < 1e-7){ uek = next; break; }
+    uek = next;
+  }
+  uekInt = uek*P.uekRate;
+  const outNo = matPaidNow + S.payables + bs + persCash + sonst + S.uek + S.kk + lkTilg + kkInt + lkInt + invest + D.wp + div + tax;
+  const inTot = inNo + uek, outTot = outNo + uekInt;
+  const cashEnd = S.cash + inTot - outTot;
+  const jue = ebt - tax;
+  // --- Bilanz
+  const geb = S.gebaeude - GEB_AFA;
+  const machEnd = machines.map(m=>{ const n={...m}; if (n.rl>0){ n.rbw=Math.max(0,n.rbw-n.afa); n.rl-=1; } delete n.isNew; return n; });
+  const av = geb + machEnd.reduce((a,m)=>a+m.rbw,0);
+  const recEnd = 0.2*(u1+u2);
+  const uv = matEndVal + fgEndVal + recEnd + D.wp + cashEnd;
+  const vortragEnd = S.vortrag - div + jue;
+  const ek = FIX_EQ + vortragEnd;
+  const pensionEnd = S.pension + pens;
+  const fk = uek + D.kk + lkBal + payablesEnd;
+  const bsum = av + uv;
+  const diff = bsum - (ek + pensionEnd + fk);
+  const ekq = ek/bsum;
+  const rating = ratingFor(ekq, jue, uek/bsum);
+  if (ekq < 0.4) W.push(['warn',`Eigenkapitalquote ${fmt(ekq*100,0)} %`,`Rating-Tendenz ${rating}. Ein schlechteres Rating erhöht die Zinsen der Folgeperiode.`]);
+  const planDev = D.plan>0 ? (s1-D.plan)/D.plan : null;
+  if (planDev!==null && Math.abs(planDev) > 0.05) W.push(['warn',`Planwert weicht ${fmt(planDev*100,1)} % ab`,`Erwarteter Absatz Markt 1: ${fmt(s1,0)} Stk, Planwert ${fmt(D.plan,0)} Stk. Die Planungsqualität beeinflusst Rating und Aktienkurs.`]);
+  if (fgEnd > 3000) W.push(['warn',`Fertiglager ${fmt(fgEnd,0)} Stk`,'Lagerkosten 100 EUR/Stk; Altgeräte senken die Kundenzufriedenheit.']);
+  // --- Ergebnisobjekt
+  Object.assign(R, {
+    techG1, techG2, tech, machines, machEnd, sold, desinvErl, aoAfa, invest, machCap, afaMach, machFix, uiAvg, umwelt, ratIdx,
+    fertEnd, newShare, einarb, prozIdx, qualIdx, prodI, prodPerMA, fehl, einsetzbar, capUnit, maxMach, maxStaff, prod, needMA, otMA, otUsed, otCost,
+    auslMA: einsetzbar>0? needMA/einsetzbar:0, auslMach: machCap>0? prod*capUnit/machCap:0,
+    pAvg, share, base, d1, d2, p2eur, ga, s1, s2, sold_, unmet1, unmet2, u1, ugA, u2, U, avail,
+    dept, loehne, sumL, hireCost, fireCost, trainCost, sozial, nk, pens, personal,
+    matNeed, order, price, short, shortPrice, purchase, matUsedVal, matEnd, matEndVal, matPaidNow, payablesEnd, bs,
+    instM, instVw, nach, advTot, mafo, feBer, transport, lagerFE, lagerM, otFix, sonst,
+    hkEinkauf, hkFert, hk, hkUnit, avgFG, cogs, fgEnd, fgEndVal, dBest, fgWrite, afa, matAuf, ebit,
+    kkInt, wpInt, lkInt, lkTilg, uekInt, ebt, tax, jue, uek, inNo, inTot, outTot, cashEnd, div,
+    geb, av, recEnd, uv, ek, pensionEnd, fk, lkBal, bsum, diff, ekq, rating, planDev, warnings: W
+  });
+  // --- Endzustand = Start der Folgeperiode
+  R.end = {
+    product: gen2?'G2':'G1', fgStock:fgEnd, fgValue:fgEndVal, matStock:matEnd, matValue:matEndVal, receivables:recEnd, payables:payablesEnd,
+    cash:cashEnd, uek, kk:D.kk, wp:D.wp, lks, vortrag:vortragEnd, pension:pensionEnd, lossCarry:lossNew,
+    staff:{fert:fertEnd, fe:feEnd, vt:vtEnd, ek:ekEnd, vw:vwEnd}, prevRevenue:U,
+    machines:machEnd, gebaeude:geb, techG1, techG2, cumProd:S.cumProd+prod, ratIdx, prozIdx, marketBase
+  };
+  return R;
+}
+/*ENGINE-END*/
+
+/* ---------- Format ---------- */
+function fmt(x, d=1){
+  if (x===null || x===undefined || !isFinite(x)) return '–';
+  const neg = x<0; x = Math.abs(x);
+  let s = x.toFixed(d); let [i,f] = s.split('.');
+  i = i.replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+  return (neg?'−':'') + i + (f?'.'+f:'');
+}
+const pct = (x,d=1)=> fmt(x*100,d)+' %';
+
+/* ---------- Daten: Ausgangslagen ---------- */
+const MACH0 = [
+  {id:'A1',typ:'A',cap:8000, rbw:1.25,rl:1,afa:1.25,fix:1.50,ui:83,rest:0.2},
+  {id:'A2',typ:'A',cap:9000, rbw:3.00,rl:2,afa:1.50,fix:1.00,ui:90,rest:0.2},
+  {id:'A3',typ:'A',cap:11500,rbw:8.00,rl:4,afa:2.00,fix:0.50,ui:95,rest:0.2},
+  {id:'A4',typ:'A',cap:13500,rbw:10.0,rl:5,afa:2.00,fix:0.25,ui:98,rest:0.2}];
+const START_P1 = { // Ende P0 laut Handbuch / Sammelbericht P0
+  product:'G1', fgStock:9000, fgValue:18.62, matStock:0, matValue:0, receivables:25.80, payables:0, cash:0.10, uek:43.37, kk:0, wp:0, lks:[],
+  vortrag:7.52, pension:11.87, lossCarry:0, staff:{fert:852, fe:35, vt:100, ek:18, vw:208}, prevRevenue:129.0,
+  machines:MACH0, gebaeude:20, techG1:100, techG2:80, cumProd:40000, ratIdx:{A:1,B:1}, prozIdx:1, marketBase:45374 };
+const START_P2 = { // Ende P1 laut Sammelbericht P1 (Ist)
+  product:'G1', fgStock:0, fgValue:0, matStock:0, matValue:0, receivables:27.26, payables:0, cash:0.10, uek:10.83, kk:0, wp:0, lks:[],
+  vortrag:13.08, pension:13.95, lossCarry:0, staff:{fert:851, fe:38, vt:105, ek:21, vw:218}, prevRevenue:147.10,
+  machines:[
+    {id:'A1',typ:'A',cap:8000, rbw:0.0,rl:0,afa:1.25,fix:1.50,ui:83,rest:0.2},
+    {id:'A2',typ:'A',cap:9000, rbw:1.5,rl:1,afa:1.50,fix:1.00,ui:90,rest:0.2},
+    {id:'A3',typ:'A',cap:11500,rbw:6.0,rl:3,afa:2.00,fix:0.50,ui:95,rest:0.2},
+    {id:'A4',typ:'A',cap:13500,rbw:8.0,rl:4,afa:2.00,fix:0.25,ui:98,rest:0.2}],
+  gebaeude:19, techG1:102.66, techG2:80, cumProd:82000, ratIdx:{A:1,B:1}, prozIdx:1, marketBase:45374 };
+
+const UMWELT = [[85,5],[90,2.5],[92.5,1.5],[95,1],[98,0.5],[100,0]];
+const BASE_PAR = {
+  // Markt 1 (geschätzt aus Marktforschung P1)
+  growth:0, cP:3056, cW:6.9, cV:105.6, cT:103.04, e:4.15, w:0.295, v:0.477, t:0.02, me:1.0, refPrice:3030, ciEff:0.02, adj:0, redis:0, launchBoost:0.10,
+  // Markt 2
+  fx:8.3, m2Base:10000, m2Ref:2700, m2e:3.0, m2W:1.0, m2V:10, tr1:25, tr2:75,
+  gaPrice:2700, gaMax:4000,
+  // Löhne TEUR
+  wage:{ek:31, vw:29, fert:31, fe:45, vt:41}, hireCost:5, fireCost:10, pension:0.05,
+  fl:{fert:0.101, fe:0.086, vt:0.13, ek:0.11, vw:0.082}, fehl:0.06, newProd:0.8, motiv:1.002, prodII:1.0, trainEff:0.005, trainCost:800,
+  prodG1:50, prodG2:80, capG2:2, otStaff:0.10, otMach:0.05, otFix:2.5, otFactor:1.25, ekEl:1.18, vwEl:0.35,
+  spThreshold:0.10,
+  // Material
+  legacyPrice:600, matTiers:{1:[[30000,618,600],[50000,540,480],[70000,480,360],[1e12,400,320]], 2:[[30000,630,600],[50000,520,480],[70000,450,380],[1e12,350,330]]},
+  matPrem:{1:0.20, 2:0.23}, payQuota:{1:1.0, 2:0.9}, wertIdx:1, bsG1:50, bsG2:55, lagerFE:100, lagerMat:50,
+  // Anlagen
+  machCat:{A:{price:20,life:10,cap:14000,fix:0.3,ui:100,rest:0.2}, B:{price:36.1,life:15,cap:25000,fix:2.5,ui:110,rest:0.3}},
+  avail:1, inst:1, instVw:1, umweltTable:UMWELT, nachEUR:48.1, nachNoOT:0.9, oneOff:0,
+  // F&E
+  kTech1:0.209, kTech2:0.372, techAlpha:0.7,
+  // Finanzen
+  uekRate:0.06, kkRate:0.055, lkRate:0.05, wpRate:0.02, tax:0.40
+};
+function parP1(){ return clone(BASE_PAR); }
+function parP2(){
+  const p = clone(BASE_PAR);
+  Object.assign(p, {growth:-0.01, cP:3060, cW:7.0, cV:108, cT:105.7, gaPrice:2600, gaMax:9000, bsG1:65, oneOff:3.0, uekRate:0.06,
+    wage:{ek:31.9, vw:29.9, fert:31.9, fe:46.4, vt:42.2}, motiv:1.0});
+  p.machCat.A.price = 23.0;
+  return p;
+}
+const DEC_P1 = {price:2900, adv:6.5, vt1:105, ci:0, mafo:true, plan:47000, m2:false, p2:0, adv2:0, vt2:0, ga:4000,
+  feG1:38, feG2:0, oekoG1:0, oekoG2:0, wert:0, product:'G1', supplier:0, order:0, prod:42000, buyA:0, buyB:0, sell:[], hires:85, fires:0,
+  training:0, prozOpt:0, ratA:0, ratB:0, nk:0.40, kk:0, lk:0, wp:0, div:0};
+const DEC_P2_ORIG = {price:3010, adv:6.5, vt1:110, ci:0, mafo:true, plan:59000, m2:false, p2:22400, adv2:0, vt2:0, ga:9000,
+  feG1:38, feG2:70, oekoG1:0, oekoG2:1.0, wert:0, product:'G1', supplier:2, order:70001, prod:62000, buyA:1, buyB:1, sell:['A1','A2'], hires:580, fires:0,
+  training:0, prozOpt:0, ratA:0, ratB:0, nk:0.40, kk:0, lk:0, wp:0, div:0};
+// Optimiert über Fertigung, Einstellungen und Anlagen (Bewertung P2 + P3, siehe Variantenvergleich)
+const DEC_P2 = {...DEC_P2_ORIG, plan:46500, prod:56000, buyA:0, buyB:1, sell:['A1'], hires:440};
+const IST_P1 = {s1:47000, ga:4000, U:147.10, prod:42000, hkUnit:2172.46, personal:60.92, matAuf:27.30, afa:7.75, sonst:22.44, ebit:10.07, uekInt:0.65, tax:3.86, jue:5.56, uek:10.83, ek:37.08, bsum:61.86, d1:53734, fertEnd:851, prodPerMA:49.08, auslMA:1.0696};
+
+/* ---------- Zustand ---------- */
+const PERIODS = ['P1','P2','P3','P4','P5','P6','P7'];
+const STORE_KEY = 'hp-sim-v2';
+let state = null;
+function variantOf(period, name, start, par, dec){
+  const r = simulate(clone(start), par, clone(dec));
+  return {period, name, dec:clone(dec), par:clone(par), kpi:{sold_:r.sold_, U:r.U, ebit:r.ebit, jue:r.jue, uek:r.uek, ekq:r.ekq, hkUnit:r.hkUnit}};
+}
+function defaultState(){
+  return { cur:'P2', tab:'varianten', periods:{
+    P1:{par:parP1(), dec:clone(DEC_P1), ist:clone(IST_P1)},
+    P2:{par:parP2(), dec:clone(DEC_P2), ist:{}} },
+    variants:[variantOf('P2','Eure Entscheide (Original)', START_P2, parP2(), DEC_P2_ORIG), variantOf('P2','Optimiert', START_P2, parP2(), DEC_P2)] };
+}
+function load(){
+  try { const s = localStorage.getItem(STORE_KEY); if (s){ const o = JSON.parse(s); if (o && o.periods && o.periods.P1) return o; } } catch(e){}
+  return defaultState();
+}
+function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
+state = load();
+
+function ensurePeriod(k){
+  if (state.periods[k]) return;
+  const i = PERIODS.indexOf(k), prev = state.periods[PERIODS[i-1]];
+  const par = clone(prev.par); par.oneOff = 0; par.gaMax = 0;
+  const dec = clone(prev.dec); dec.sell = []; dec.buyA = 0; dec.buyB = 0; dec.hires = 0; dec.fires = 0; dec.ga = 0; dec.lk = 0; dec.kk = 0; dec.div = 0;
+  state.periods[k] = {par, dec, ist:{}};
+}
+/* Startzustand: P1 und P2 aus Berichten, ab P3 aus der Simulation der Vorperiode (mit eingetragenen Ist-Werten überschrieben) */
+const IST_START_FIELDS = [
+  ['uek','Überziehungskredit','MEUR'],['receivables','Forderungen','MEUR'],['fgStock','Lager Fertigprodukte','Stk'],['fgValue','Lagerwert Fertigprodukte','MEUR'],
+  ['matStock','Lager Einsatzstoffe','Stk'],['vortrag','Gewinnvortrag (EK − 24)','MEUR'],['pension','Pensionsrückstellungen','MEUR'],
+  ['staff.fert','Personal Fertigung','MA'],['staff.ek','Personal Einkauf','MA'],['staff.vw','Personal Verwaltung','MA'],['techG1','Technologieindex Gen. 1','Index'],['techG2','Technologieindex Gen. 2','Index']];
+const IST_CMP_FIELDS = [['s1','Absatz Markt 1','Stk',0],['d1','Potentieller Absatz Markt 1','Stk',0],['prod','Fertigung','Stk',0],['U','Umsatz','MEUR',2],['ebit','Betriebsergebnis','MEUR',2],['jue','Periodenüberschuss','MEUR',2],['uek','Überziehungskredit','MEUR',2],['ek','Eigenkapital','MEUR',2]];
+function getPath(o,p){ return p.split('.').reduce((a,k)=>a==null?a:a[k], o); }
+function setPath(o,p,v){ const ks=p.split('.'); let a=o; for (let i=0;i<ks.length-1;i++) a=a[ks[i]]; a[ks[ks.length-1]]=v; }
+const cache = {};
+function runAll(){
+  let start = clone(START_P1);
+  for (const k of PERIODS){
+    if (!state.periods[k]) break;
+    if (k==='P2') start = clone(START_P2);
+    const p = state.periods[k];
+    const r = simulate(start, p.par, p.dec);
+    cache[k] = {start, r};
+    start = clone(r.end);
+    // eingetragene Ist-Werte überschreiben den Startzustand der nächsten Periode
+    if (k!=='P1') for (const [f] of IST_START_FIELDS){ const v = p.ist && p.ist['start_'+f]; if (v!==undefined && v!=='' && isFinite(v)) setPath(start, f, +v); }
+    if (k!=='P1' && p.ist && isFinite(p.ist.start_fgStock) && p.ist.start_fgStock!=='' && !(isFinite(p.ist.start_fgValue) && p.ist.start_fgValue!=='')) {}
+  }
+}
+
+/* ---------- Formular-Schema ---------- */
+const DEC_GROUPS = [
+  {t:'Markt 1 (Inland)', open:true, f:[
+    ['price','Preis Copy Classic','EUR',10],['adv','Werbung','MEUR',0.1],['vt1','Vertriebsmitarbeitende (Endbestand)','MA',1],
+    ['ci','Corporate Identity','MEUR',0.1],['mafo','Marktforschungsbericht kaufen','chk'],['plan','Planwert Absatz Markt 1','Stk',500,'Wird mit dem tatsächlichen Absatz verglichen (Planungsqualität).']]},
+  {t:'Grossabnehmer und Markt 2', f:[
+    ['ga','Grossabnehmer: zugesagte Menge','Stk',500,'Preis und Höchstmenge stehen in den Annahmen.'],
+    ['m2','Markt 2 aktiv','chk'],['p2','Preis Markt 2','FCU',100],['adv2','Werbung Markt 2','MEUR',0.1],['vt2','Vertriebsmitarbeitende Markt 2','MA',1]]},
+  {t:'Forschung & Entwicklung', f:[
+    ['feG1','F&E-Personal Gen. 1','MA',1],['feG2','F&E-Personal Gen. 2','MA',1],['oekoG1','Ökologie-Beratung Gen. 1','MEUR',0.1],['oekoG2','Ökologie-Beratung Gen. 2','MEUR',0.1],
+    ['wert','Wertanalyse-Beratung','MEUR',0.1],['product','Produkt am Markt','sel',[['G1','Copy Classic Gen. 1'],['G2','Copy Classic Gen. 2 (ab P4)']]]]},
+  {t:'Einkauf', f:[
+    ['supplier','Lieferant','sel',[[0,'Altvertrag (P1, 600 EUR JIT)'],[1,'Lieferant 1'],[2,'Lieferant 2']]],['order','Bestellmenge Einsatzstoffe','Stk',1000,'Staffelpreis gilt in diesem Modell für die ganze Bestellmenge.']]},
+  {t:'Fertigung und Anlagen', open:true, f:[
+    ['prod','Fertigungsmenge','Stk',500],['buyA','Neue Anlagen Typ A','Stk',1],['buyB','Neue Anlagen Typ B','Stk',1],['sell','Anlagen verkaufen','mach'],
+    ['ratA','Rationalisierung Typ A','MEUR',0.5],['ratB','Rationalisierung Typ B','MEUR',0.5]]},
+  {t:'Personal', open:true, f:[
+    ['hires','Einstellungen Fertigung','MA',5],['fires','Entlassungen Fertigung','MA',5],['training','Training Fertigung','Tage/MA',1],
+    ['prozOpt','Prozessoptimierung','MEUR',0.5],['nk','Personalnebenkosten','% Lohn',0.01,null,'pct']]},
+  {t:'Finanzen', f:[
+    ['kk','Kurzfristiger Kredit (ab P4)','MEUR',1],['lk','Langfristiger Kredit (ab P4)','MEUR',1],['wp','Kauf Wertpapiere','MEUR',1],['div','Dividende','MEUR',0.5]]}
+];
+const PAR_GROUPS = [
+  {t:'Annahmen: Markt und Konkurrenz', f:[
+    ['growth','Marktwachstum Markt 1','%',0.005,'Prognose P2: stabil, leichte Einbussen möglich.','pct'],
+    ['cP','Ø Preis Konkurrenz','EUR',10],['cW','Ø Werbung Konkurrenz','MEUR',0.1],['cV','Ø Vertrieb Konkurrenz','MA',1],['cT','Ø Technologie Konkurrenz','Index',0.1],
+    ['adj','Sonstiger Nachfrageeffekt','%',0.01,'Zum Beispiel Kundenzufriedenheit nach Lieferunfähigkeit oder Preiserhöhung.','pct'],
+    ['redis','Zusatznachfrage aus Lieferunfähigkeit anderer','Stk',100],
+    ['e','Preiselastizität (relativ)','',0.05,'Aus Marktforschung P1 geschätzt: 4.15'],['w','Werbewirkung (Exponent)','',0.01],['v','Vertriebswirkung (Exponent)','',0.01],['t','Technologiewirkung je Indexpunkt','',0.005],
+    ['gaPrice','Grossabnehmer Preis','EUR',10],['gaMax','Grossabnehmer Höchstmenge','Stk',500],
+    ['fx','Wechselkurs','FCU/EUR',0.1],['m2Base','Markt 2: Absatz je Unternehmen','Stk',500],['m2Ref','Markt 2: Referenzpreis (Annahme)','EUR',50,'Unbekannt. Nach der ersten Periode in Markt 2 anpassen.'],['m2V','Markt 2: Referenz Vertrieb','MA',1]]},
+  {t:'Annahmen: Kosten und Personal', f:[
+    ['wage.fert','Lohn Fertigung','TEUR',0.1],['wage.fe','Lohn F&E','TEUR',0.1],['wage.vt','Lohn Vertrieb','TEUR',0.1],['wage.ek','Lohn Einkauf','TEUR',0.1],['wage.vw','Lohn Verwaltung','TEUR',0.1],
+    ['hireCost','Einstellungskosten','TEUR',0.5],['fireCost','Entlassungskosten','TEUR',0.5],
+    ['fl.fert','Fluktuation Fertigung','%',0.005,'P1: 10.1 %','pct'],['fehl','Fehlzeiten Fertigung','%',0.005,'P1: 6.0 %','pct'],
+    ['newProd','Produktivität neuer MA','%',0.01,'Kalibriert an P1: neue MA leisten ca. 80 %.','pct'],['motiv','Motivationsindex','Index',0.005],['prodII','Lernkurve (Produktivitätsindex II)','Index',0.005],
+    ['bsG1','Betriebsstoffe Gen. 1','EUR/Stk',1],['bsG2','Betriebsstoffe Gen. 2','EUR/Stk',1],['nachEUR','Nacharbeit','EUR/Stk',1,'P1: 48 EUR/Stk mit Überstunden'],
+    ['oneOff','Einmalige Kosten (z. B. ERP)','MEUR',0.5],['inst','Instandhaltung je Anlage','MEUR',0.1],
+    ['machCat.A.price','Kaufpreis Anlage A','MEUR',0.5],['machCat.B.price','Kaufpreis Anlage B','MEUR',0.5],
+    ['uekRate','Zins Überziehungskredit','%',0.005,null,'pct'],['kkRate','Zins kurzfristiger Kredit','%',0.005,null,'pct'],['lkRate','Zins langfristiger Kredit','%',0.005,null,'pct'],['wpRate','Zins Wertpapiere','%',0.005,null,'pct'],['tax','Steuersatz','%',0.01,null,'pct'],
+    ['kTech1','F&E-Wirkung Gen. 1','',0.01,'Kalibriert: 38 MA → +2.66 Punkte'],['kTech2','F&E-Wirkung Gen. 2','',0.01,'Kalibriert: ca. 185 Personenjahre → +20 Punkte']]}
+];
+
+/* ---------- Rendering: Formular ---------- */
+const $ = s=>document.querySelector(s);
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fieldHTML(scope, f, obj, startMachines){
+  const [k,label,unit,step,hint,kind] = f;
+  const id = `${scope}-${k.replace(/\./g,'_')}`;
+  const v = getPath(obj,k);
+  if (unit==='chk') return `<label class="chk" for="${id}"><input type="checkbox" id="${id}" data-scope="${scope}" data-k="${k}" ${v?'checked':''}> ${esc(label)}</label>`;
+  if (unit==='sel') return `<div class="field"><label for="${id}">${esc(label)}</label><div class="in"><select id="${id}" data-scope="${scope}" data-k="${k}" data-sel="1">${step.map(([val,t])=>`<option value="${val}" ${String(val)===String(v)?'selected':''}>${esc(t)}</option>`).join('')}</select></div></div>`;
+  if (unit==='mach'){
+    return `<div class="sub">${esc(label)}</div><div class="mach">${startMachines.map(m=>`<label class="row" for="${scope}-sell-${m.id}"><input type="checkbox" id="${scope}-sell-${m.id}" data-sell="${m.id}" ${(obj.sell||[]).includes(m.id)?'checked':''}><span>${m.id} · ${fmt(m.cap,0)} Stk · UI ${m.ui}</span><span class="meta">RBW ${fmt(m.rbw,2)} → Erlös ${fmt(m.rbw*m.rest,2)}</span></label>`).join('')}</div>`;
+  }
+  const shown = kind==='pct' ? +(v*100).toFixed(4) : v;
+  const st = kind==='pct' ? +(step*100).toFixed(4) : step;
+  return `<div class="field"><label for="${id}">${esc(label)}</label><div class="in"><input id="${id}" type="number" inputmode="decimal" step="${st}" value="${shown}" data-scope="${scope}" data-k="${k}" ${kind==='pct'?'data-pct="1"':''}><span class="u">${esc(kind==='pct'?'%':unit)}</span></div>${hint?`<div class="hint">${esc(hint)}</div>`:''}</div>`;
+}
+function renderDecisions(){
+  const k = state.cur, p = state.periods[k], st = cache[k].start;
+  const open = JSON.parse(sessionGet('open')||'{}');
+  let h = '';
+  DEC_GROUPS.forEach((g,i)=>{
+    const isOpen = open['d'+i]!==undefined ? open['d'+i] : !!g.open;
+    h += `<details class="grp" data-key="d${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${g.f.map(f=>fieldHTML('dec',f,p.dec,st.machines)).join('')}</div></details>`;
+  });
+  PAR_GROUPS.forEach((g,i)=>{
+    const isOpen = open['p'+i]!==undefined ? open['p'+i] : false;
+    h += `<details class="grp" data-key="p${i}" ${isOpen?'open':''}><summary>${esc(g.t)}</summary><div class="body">${g.f.map(f=>fieldHTML('par',f,p.par,[])).join('')}</div></details>`;
+  });
+  if (k!=='P1'){
+    const isOpen = open.ist||false;
+    h += `<details class="grp" data-key="ist" ${isOpen?'open':''}><summary>Ist-Werte nach der Auswertung</summary><div class="body">
+      <p class="note">Nach der TOPSIM-Auswertung von ${k} eintragen. Vergleichswerte erscheinen im Tab «Plan gegen Ist». Endbestände ersetzen den Start der nächsten Periode.</p>
+      <div class="sub">Vergleich</div>${IST_CMP_FIELDS.map(([f,l,u])=>istField(k,f,l,u)).join('')}
+      <div class="sub">Endbestände für ${PERIODS[PERIODS.indexOf(k)+1]||'die Folgeperiode'}</div>${IST_START_FIELDS.map(([f,l,u])=>istField(k,'start_'+f,l,u)).join('')}
+    </div></details>`;
+  }
+  h += `<details class="grp" data-key="io" ${open.io?'open':''}><summary>Speichern und teilen</summary><div class="body">
+    <p class="note">Eingaben bleiben in diesem Browser gespeichert. Für einen anderen Computer oder das Team: Daten kopieren und dort einfügen.</p>
+    <div class="row-actions"><button class="btn" id="btn-export">Daten kopieren</button><button class="btn" id="btn-import">Eingefügte Daten laden</button><button class="btn" id="btn-reset-p">Periode zurücksetzen</button></div>
+    <textarea id="io-text" aria-label="Daten als Text" placeholder="Hier Daten einfügen, dann «Eingefügte Daten laden»."></textarea><div class="note" id="io-msg" role="status"></div>
+  </div></details>`;
+  $('#decisions').innerHTML = h;
+}
+function istField(k,f,l,u){
+  const v = (state.periods[k].ist||{})[f];
+  const id = `ist-${f.replace(/\./g,'_')}`;
+  return `<div class="field"><label for="${id}">${esc(l)}</label><div class="in"><input id="${id}" type="number" step="any" value="${v===undefined?'':v}" data-ist="${f}" placeholder="–"><span class="u">${esc(u)}</span></div></div>`;
+}
+function sessionGet(k){ try { return sessionStorage.getItem('hp-'+k); } catch(e){ return null; } }
+function sessionSet(k,v){ try { sessionStorage.setItem('hp-'+k, v); } catch(e){} }
+
+/* ---------- Rendering: Ergebnisse ---------- */
+const TABS = [['uebersicht','Übersicht'],['markt','Absatz'],['fertigung','Fertigung & Personal'],['kosten','Kosten'],['guv','GuV'],['liq','Liquidität'],['bilanz','Bilanz'],['ist','Plan gegen Ist'],['varianten','Varianten']];
+function kpi(l,v,d,cls=''){ return `<div class="kpi ${cls}"><span class="l">${esc(l)}</span><span class="v">${v}</span>${d?`<span class="d">${d}</span>`:''}</div>`; }
+function tbl(head, rows){
+  return `<div class="tw"><table><thead><tr>${head.map((h,i)=>`<th class="${i?'n':''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>{
+    const cls = r.cls||''; const cells = r.c||r;
+    return `<tr class="${cls}">${cells.map((c,i)=>`<td class="${i?'n':''}">${c}</td>`).join('')}</tr>`;}).join('')}</tbody></table></div>`;
+}
+function bar(label, val, max, txt, cls=''){
+  const w = max>0 ? Math.max(0, Math.min(100, val/max*100)) : 0;
+  return `<div class="bar"><span>${esc(label)}</span><span class="track"><span class="fill ${cls}" style="width:${w}%"></span></span><span class="v">${txt}</span></div>`;
+}
+function renderResults(){
+  const k = state.cur, {start:S, r} = cache[k], p = state.periods[k];
+  const prevK = PERIODS[PERIODS.indexOf(k)-1];
+  let h = '';
+  h += `<div class="liq"><div><h3>Liquiditätsbedarf ${k} (Überziehungskredit)</h3><div class="note">Diesen Betrag in Moodle als Liquiditätsbedarf melden.</div></div><div class="big num">${fmt(r.uek,2)} MEUR</div></div>`;
+  h += `<div class="kpis">
+    ${kpi('Absatz gesamt', fmt(r.sold_,0)+' Stk', `M1 ${fmt(r.s1,0)} · GA ${fmt(r.ga,0)}${r.s2>0?' · M2 '+fmt(r.s2,0):''}`)}
+    ${kpi('Umsatz', fmt(r.U,2)+' MEUR', prevK?`Vorperiode ${fmt(S.prevRevenue,2)}`:'')}
+    ${kpi('Betriebsergebnis', fmt(r.ebit,2)+' MEUR', `Umsatzrendite ${pct(r.jue/r.U)}`, 'hl')}
+    ${kpi('Periodenüberschuss', fmt(r.jue,2)+' MEUR', `Steuern ${fmt(r.tax,2)}`)}
+    ${kpi('Eigenkapitalquote', pct(r.ekq,0), `Rating-Tendenz ${r.rating}`)}
+    ${kpi('Herstellkosten', fmt(r.hkUnit,0)+' EUR/Stk', `Fertigung ${fmt(r.prod,0)} Stk`)}
+  </div>`;
+  const W = r.warnings;
+  h += `<div class="warns">${W.length? W.map(([c,t,d])=>`<div class="w ${c}"><div><b>${esc(t)}.</b> ${esc(d)}</div></div>`).join('') : `<div class="w ok"><div><b>Keine Warnungen.</b> Kapazität, Lieferfähigkeit und Planwert passen zusammen.</div></div>`}</div>`;
+  h += `<section class="panel"><div class="tabs" role="tablist">${TABS.map(([id,t])=>`<button role="tab" data-tab="${id}" aria-selected="${state.tab===id}">${t}</button>`).join('')}</div><div class="tabpanel" role="tabpanel">${tabContent(state.tab, k, S, r, p)}</div></section>`;
+  $('#results').innerHTML = h;
+}
+function tabContent(tab, k, S, r, p){
+  const D = p.dec, P = p.par;
+  if (tab==='uebersicht'){
+    const mx = Math.max(r.d1+r.ga+r.d2, r.maxMach, r.maxStaff, r.avail)*1.02;
+    return `<div class="two"><div class="bars"><h3>Nachfrage und Kapazität (Stk)</h3>
+      ${bar('Nachfrage M1 + GA', r.d1+r.ga+r.d2, mx, fmt(r.d1+r.ga+r.d2,0))}
+      ${bar('Verfügbar (Lager + Fertigung)', r.avail, mx, fmt(r.avail,0), 'alt')}
+      ${bar('Kapazität Anlagen inkl. Ü.', r.maxMach, mx, fmt(r.maxMach,0), r.maxMach<D.prod?'warn':'alt')}
+      ${bar('Kapazität Personal inkl. Ü.', r.maxStaff, mx, fmt(r.maxStaff,0), r.maxStaff<D.prod?'warn':'alt')}
+      ${bar('Geplante Fertigung', D.prod, mx, fmt(D.prod,0), 'alt')}
+      </div><div>${tbl(['Kennzahl',k],[
+        ['Potentieller Absatz Markt 1', fmt(r.d1,0)+' Stk'],['Nicht gedeckte Nachfrage', fmt(r.unmet1,0)+' Stk'],
+        ['Fertiglager Ende', fmt(r.fgEnd,0)+' Stk'],['Auslastung Anlagen', pct(r.auslMach)],['Auslastung Personal', pct(r.auslMA)],
+        ['Ø Erlös je Stk', fmt(r.sold_>0?r.U/r.sold_*1e6:0,0)+' EUR'],
+        ['Selbstkosten je Stk (ca.)', fmt((r.cogs + r.personal + r.sonst + r.afa + r.matAuf - r.hk)/Math.max(1,r.sold_)*1e6 ,0)+' EUR'],
+        ['Technologie Gen. 1 / Gen. 2', fmt(r.techG1,1)+' / '+fmt(r.techG2,1)],
+        ['Rating-Tendenz', r.rating]])}</div></div>
+      <p class="note">Das Modell ist eine Schätzung: Die Absatzfunktion stammt aus dem Marktforschungsbericht P1, die Konkurrenz-Annahmen stehen links unter «Annahmen». Die grösste Unsicherheit liegt bei der Nachfrage und bei der Produktivität neuer Mitarbeitender.</p>`;
+  }
+  if (tab==='markt'){
+    return `${tbl(['Markt 1','Wert'],[
+      ['Eigener Preis', fmt(D.price,0)+' EUR'],['Ø Marktpreis (inkl. eigener)', fmt(r.pAvg,0)+' EUR'],['Abweichung vom Ø', pct(D.price/r.pAvg-1)],
+      ['Marktbasis je Unternehmen', fmt(r.base,0)+' Stk'],['Eigener Attraktivitätsfaktor', fmt(r.share,3)],
+      ['Potentieller Absatz', fmt(r.d1,0)+' Stk'],['Tatsächlicher Absatz', fmt(r.s1,0)+' Stk'],['Nicht gedeckt', fmt(r.unmet1,0)+' Stk'],
+      ['Planwert', fmt(D.plan,0)+' Stk'],['Abweichung Plan', r.planDev===null?'–':pct(r.planDev)],['Umsatz Markt 1', fmt(r.u1,2)+' MEUR']])}
+      ${tbl(['Weitere Kanäle','Wert'],[
+      ['Grossabnehmer', fmt(r.ga,0)+' Stk × '+fmt(P.gaPrice,0)+' EUR = '+fmt(r.ugA,2)+' MEUR'],
+      ['Markt 2 aktiv', D.m2?'ja':'nein'],['Markt 2 Preis', D.m2? fmt(D.p2,0)+' FCU = '+fmt(r.p2eur,0)+' EUR':'–'],
+      ['Markt 2 Nachfrage / Absatz', D.m2? fmt(r.d2,0)+' / '+fmt(r.s2,0)+' Stk':'–'],['Umsatz Markt 2', fmt(r.u2,2)+' MEUR']])}
+      ${elasticityTable(k)}
+      <p class="note">Formel: Absatz = Marktbasis × (Preis / Ø Preis)^−${fmt(P.e,2)} × (Werbung / Ø)^${fmt(P.w,3)} × (Vertrieb / Ø)^${fmt(P.v,3)} × Technologie-Faktor. Die Durchschnittswerte enthalten die fünf Konkurrenten mit den Annahmen links.</p>`;
+  }
+  if (tab==='fertigung'){
+    const rows = ['fert','fe','vt','ek','vw'].map(d=>{ const x=r.dept[d]; return [({fert:'Fertigung',fe:'F&E',vt:'Vertrieb',ek:'Einkauf',vw:'Verwaltung'})[d], fmt(x.start,0), fmt(x.hires,0), fmt(x.fires,0), fmt(x.fl,0), fmt(x.end,0)]; });
+    return `${tbl(['Anlage','Kapazität','Rationalisierung','Restbuchwert Ende','Abschreibung','Fixkosten','Umweltindex'], r.machines.map(m=>[m.id+(m.isNew?' (neu)':''), fmt(m.cap,0), fmt(r.ratIdx[m.typ],3), fmt(r.machEnd.find(x=>x.id===m.id).rbw,2), fmt(m.rl>0?m.afa:0,2), fmt(m.fix,2), fmt(m.ui,0)]).concat([{cls:'sum',c:['Summe',fmt(r.machCap,0),'',fmt(r.machEnd.reduce((a,m)=>a+m.rbw,0),2),fmt(r.afaMach,2),fmt(r.machFix,2),'Ø '+fmt(r.uiAvg,1)]}]))}
+      ${r.sold.length? `<p class="note">Verkauft: ${r.sold.map(m=>m.id).join(', ')} · Erlös ${fmt(r.desinvErl,2)} MEUR · ausserordentliche Abschreibung ${fmt(r.aoAfa,2)} MEUR.</p>`:''}
+      ${tbl(['Personal','Anfang','Einstellungen','Entlassungen','Fluktuation','Ende'], rows)}
+      ${tbl(['Produktivität Fertigung','Wert'],[
+        ['Anteil neue Mitarbeitende', pct(r.newShare)],['Einarbeitungsindex', fmt(r.einarb,3)],['Qualifizierung × Prozessoptimierung', fmt(r.qualIdx*r.prozIdx,3)],
+        ['Produktivitätsindex I', fmt(r.prodI,3)],['Fertigungskapazität je MA', fmt(r.prodPerMA,2)+' Stk'],
+        ['Einsetzbares Personal (ohne Fehlzeiten)', fmt(r.einsetzbar,1)],['Benötigtes Personal', fmt(r.needMA,1)],['Überstunden-MA', fmt(r.otMA,1)],
+        ['Kosten Überstunden (Löhne + Zusatzschicht)', fmt(r.otCost*(1+D.nk+P.pension)+r.otFix,2)+' MEUR']])}`;
+  }
+  if (tab==='kosten'){
+    return `${tbl(['Kostenart','MEUR'],[
+      ['Einsatzstoffe (Verbrauch)', fmt(r.matUsedVal,2)],['Betriebsstoffe', fmt(r.bs,2)],
+      ['Löhne und Gehälter', fmt(r.sumL,2)],['Einstellung / Entlassung / Training', fmt(r.hireCost+r.fireCost+r.trainCost,2)],['Sozialplan', fmt(r.sozial,2)],['Personalnebenkosten', fmt(r.nk,2)],['Pensionsrückstellungen', fmt(r.pens,2)],
+      ['Abschreibungen Gebäude', fmt(1,2)],['Abschreibungen Anlagen (inkl. Verkauf)', fmt(r.afaMach+r.aoAfa,2)],['Abschreibung Fertigerzeugnisse', fmt(r.fgWrite,2)],
+      ['Sonstige fixe Kosten (Anlagen + Zusatzschicht)', fmt(r.machFix+r.otFix,2)],['Instandhaltung / Rationalisierung', fmt(r.instM+r.instVw+D.ratA+D.ratB,2)],['Prozessoptimierung', fmt(D.prozOpt,2)],
+      ['Umweltabgabe', fmt(r.umwelt,2)],['Nacharbeit', fmt(r.nach,2)],['Lagerkosten', fmt(r.lagerFE+r.lagerM,2)],
+      ['Werbung / Marktforschung / CI', fmt(r.advTot+r.mafo+D.ci,2)],['F&E-Beratung (Ökologie, Wertanalyse)', fmt(r.feBer,2)],['Transport', fmt(r.transport,2)],['Einmalige Kosten (ERP)', fmt(P.oneOff,2)],
+      {cls:'sum',c:['Summe', fmt(r.matAuf+r.personal+r.afa+r.sonst,2)]}])}
+      ${tbl(['Einkauf','Wert'],[
+      ['Bedarf Einsatzstoffe', fmt(r.matNeed,0)+' Stk'],['Bestellung', fmt(r.order,0)+' Stk zu '+fmt(r.price,0)+' EUR'],['Nachlieferung', fmt(r.short,0)+' Stk zu '+fmt(r.shortPrice,0)+' EUR'],
+      ['Einkaufswert', fmt(r.purchase,2)+' MEUR'],['Davon bezahlt / offen', fmt(r.matPaidNow,2)+' / '+fmt(r.payablesEnd,2)+' MEUR'],['Materiallager Ende', fmt(r.matEnd,0)+' Stk = '+fmt(r.matEndVal,2)+' MEUR']])}
+      ${tbl(['Herstellkosten','MEUR'],[['Einkauf (Material, Betriebsstoffe, Kostenstelle)', fmt(r.hkEinkauf,2)],['Fertigung (Personal, Anlagen, Umwelt, Nacharbeit)', fmt(r.hkFert,2)],{cls:'sum',c:['Herstellkosten der Fertigung', fmt(r.hk,2)]},['Je Stück', fmt(r.hkUnit,2)+' EUR']])}`;
+  }
+  if (tab==='guv'){
+    return tbl(['Gesamtkostenverfahren','MEUR','% Umsatz'],[
+      ['Umsatzerlöse', fmt(r.U,2), '100.0'],['+ Bestandsveränderung Fertigerzeugnisse', fmt(r.dBest,2), fmt(r.dBest/r.U*100,1)],
+      ['− Materialaufwand', fmt(r.matAuf,2), fmt(r.matAuf/r.U*100,1)],['− Personalaufwand', fmt(r.personal,2), fmt(r.personal/r.U*100,1)],
+      ['− Abschreibungen', fmt(r.afa,2), fmt(r.afa/r.U*100,1)],['− Sonstiger Aufwand', fmt(r.sonst,2), fmt(r.sonst/r.U*100,1)],
+      {cls:'res',c:['= Betriebsergebnis (EBIT)', fmt(r.ebit,2), fmt(r.ebit/r.U*100,1)]},
+      ['+ Zinserträge Wertpapiere', fmt(r.wpInt,2),''],['− Zinsen Kredite', fmt(r.kkInt+r.lkInt,2),''],['− Zinsen Überziehungskredit', fmt(r.uekInt,2),''],
+      {cls:'sum',c:['= Gewinn vor Steuern', fmt(r.ebt,2), fmt(r.ebt/r.U*100,1)]},['− Steuern', fmt(r.tax,2),''],
+      {cls:'res',c:['= Periodenüberschuss', fmt(r.jue,2), fmt(r.jue/r.U*100,1)]}]);
+  }
+  if (tab==='liq'){
+    return `${tbl(['Liquiditätsrechnung','MEUR'],[
+      ['Kassenanfangsbestand', fmt(S.cash,2)],
+      {cls:'sum',c:['Einzahlungen','']},['Umsatz aktuelle Periode (80 % Handel, 100 % Grossabnehmer)', fmt(0.8*(r.u1+r.u2)+r.ugA,2)],['Forderungen Vorperiode', fmt(S.receivables,2)],
+      ['Verkauf Anlagen', fmt(r.desinvErl,2)],['Kredite / Wertpapiere zurück / Zinsen', fmt(D.kk+D.lk+S.wp+r.wpInt,2)],['Überziehungskredit (neu)', fmt(r.uek,2)],
+      {cls:'sum',c:['Auszahlungen','']},['Einsatzstoffe und Betriebsstoffe', fmt(r.matPaidNow+r.bs,2)],['Einkauf Vorperiode', fmt(S.payables,2)],
+      ['Personal (ohne Pensionsrückstellungen)', fmt(r.personal-r.pens,2)],['Sonstige Aufwendungen', fmt(r.sonst,2)],
+      ['Rückzahlung Überziehungskredit / kurzfr. Kredit', fmt(S.uek+S.kk,2)],['Tilgung langfristiger Kredite', fmt(r.lkTilg,2)],['Kauf Anlagen', fmt(r.invest,2)],
+      ['Kauf Wertpapiere / Dividende', fmt(D.wp+r.div,2)],['Steuern', fmt(r.tax,2)],['Zinsen', fmt(r.uekInt+r.kkInt+r.lkInt,2)],
+      {cls:'res',c:['Kassenendbestand', fmt(r.cashEnd,2)]}])}
+      <p class="note">Der Überziehungskredit füllt die Lücke so, dass mindestens 0.1 MEUR in der Kasse bleiben. Zinsen darauf sind in derselben Periode fällig, Rückzahlung in der Folgeperiode.</p>`;
+  }
+  if (tab==='bilanz'){
+    return `<div class="two">${tbl(['Aktiva','MEUR'],[
+      ['Grundstücke und Bauten', fmt(r.geb,2)],['Maschinen', fmt(r.av-r.geb,2)],{cls:'sum',c:['Anlagevermögen', fmt(r.av,2)]},
+      ['Materialien', fmt(r.matEndVal,2)],['Fertige Erzeugnisse', fmt(r.fgEndVal,2)],['Forderungen', fmt(r.recEnd,2)],['Wertpapiere', fmt(D.wp,2)],['Kasse', fmt(r.cashEnd,2)],
+      {cls:'sum',c:['Umlaufvermögen', fmt(r.uv,2)]},{cls:'res',c:['Bilanzsumme', fmt(r.bsum,2)]}])}
+      ${tbl(['Passiva','MEUR'],[
+      ['Gezeichnetes Kapital + Rücklagen', fmt(FIX_EQ,2)],['Gewinnvortrag inkl. Periodenüberschuss', fmt(r.ek-FIX_EQ,2)],{cls:'sum',c:['Eigenkapital', fmt(r.ek,2)]},
+      ['Pensionsrückstellungen', fmt(r.pensionEnd,2)],['Überziehungskredit', fmt(r.uek,2)],['Kurzfristiger Kredit', fmt(D.kk,2)],['Langfristige Kredite', fmt(r.lkBal,2)],['Verbindlichkeiten Lieferanten', fmt(r.payablesEnd,2)],
+      {cls:'res',c:['Bilanzsumme', fmt(r.ek+r.pensionEnd+r.fk,2)]}])}</div>
+      <p class="note">Eigenkapitalquote ${pct(r.ekq)} · Fremdkapitalquote ${pct(1-r.ekq)} · Kontrolle Aktiva − Passiva: ${fmt(r.diff,3)} MEUR. Rating-Tendenz ${r.rating} (grobe Regel nach Eigenkapitalquote, Ergebnis und Überziehungskredit).</p>`;
+  }
+  if (tab==='ist'){
+    if (k==='P1'){
+      const I = p.ist;
+      const rows = [['Potentieller Absatz M1','d1',0],['Absatz Markt 1','s1',0],['Grossabnehmer','ga',0],['Umsatz','U',2],['Fertigung','prod',0],['Kapazität je MA','prodPerMA',2],['Auslastung Personal','auslMA',4],
+        ['Herstellkosten je Stk','hkUnit',2],['Materialaufwand','matAuf',2],['Personalaufwand','personal',2],['Abschreibungen','afa',2],['Sonstiger Aufwand','sonst',2],['Betriebsergebnis','ebit',2],
+        ['Zinsen ÜK','uekInt',2],['Steuern','tax',2],['Periodenüberschuss','jue',2],['Überziehungskredit','uek',2],['Eigenkapital','ek',2],['Bilanzsumme','bsum',2],['Personal Fertigung','fertEnd',0]];
+      return `<p class="note">Test des Modells: Ausgangslage P0 und eure Entscheide P1 eingegeben, Ergebnis mit dem echten Sammelbericht P1 verglichen.</p>`+tbl(['Position','Modell','TOPSIM Ist','Abweichung'], rows.map(([l,f,d])=>{
+        const m = r[f], i = I[f]; const dev = i? (m-i)/Math.abs(i):0; const c = Math.abs(dev)<0.01?'dev-ok':Math.abs(dev)<0.03?'dev-mid':'dev-bad';
+        return [l, fmt(m,d), fmt(i,d), `<span class="${c}">${pct(dev,1)}</span>`]; }));
+    }
+    const I = p.ist||{};
+    const has = IST_CMP_FIELDS.some(([f])=>I[f]!==undefined && I[f]!=='');
+    if (!has) return `<p class="note">Noch keine Ist-Werte für ${k}. Nach der Auswertung links unter «Ist-Werte nach der Auswertung» eintragen, dann erscheint hier der Vergleich.</p>`;
+    return tbl(['Position','Simulation','Ist','Abweichung'], IST_CMP_FIELDS.map(([f,l,u,d])=>{
+      const m=r[f], i=I[f]; if (i===undefined||i==='') return [l, fmt(m,d), '–', '–'];
+      const dev=(m-i)/Math.abs(i||1); const c=Math.abs(dev)<0.02?'dev-ok':Math.abs(dev)<0.05?'dev-mid':'dev-bad';
+      return [l, fmt(m,d)+' '+u, fmt(+i,d)+' '+u, `<span class="${c}">${pct(dev,1)}</span>`]; }));
+  }
+  if (tab==='varianten'){
+    const V = state.variants.filter(v=>v.period===k);
+    const cols = [['Absatz','sold_',0],['Umsatz','U',2],['EBIT','ebit',2],['Überschuss','jue',2],['ÜK','uek',2],['EK-Quote','ekq',3],['HK/Stk','hkUnit',0]];
+    const optNote = k==='P2' ? `<p class="note">Optimiert wurden Fertigungsmenge, Einstellungen und Anlagen. Bewertet wurde der Gewinn aus P2 und P3 zusammen, weil zu viel Personal und Lager erst in P3 teuer werden. Preis, Werbung, Vertrieb, F&E und Einkauf blieben wie in euren Entscheiden.</p>` : '';
+    return `${optNote}<div class="row-actions"><label class="field" style="grid-template-columns:auto 200px" for="var-name"><span>Name</span><span class="in"><input id="var-name" type="text" style="text-align:left" placeholder="z. B. Preis 3050"></span></label><button class="btn primary" id="btn-var">Aktuelle Variante merken</button></div>
+      ${V.length? tbl(['Variante','Preis','Fertigung','Einstellungen','Anlagen'].concat(cols.map(c=>c[0])).concat(['']), V.map((v,i)=>[esc(v.name), fmt(v.dec.price,0), fmt(v.dec.prod,0), fmt(v.dec.hires,0), machTxt(v.dec)].concat(cols.map(([_,f,d])=> f==='ekq'?pct(v.kpi[f],0):fmt(v.kpi[f],d))).concat([`<button class="btn" data-load="${state.variants.indexOf(v)}">Laden</button> <button class="btn" data-del="${state.variants.indexOf(v)}">Löschen</button>`]))
+        .concat([{cls:'sum',c:['Aktuell', fmt(D.price,0), fmt(D.prod,0), fmt(D.hires,0), machTxt(D)].concat(cols.map(([_,f,d])=> f==='ekq'?pct(r[f],0):fmt(r[f],d))).concat([''])}]))
+        : `<p class="note">Noch keine Varianten für ${k}. Entscheide anpassen, Namen eingeben und merken, dann hier vergleichen.</p>`}`;
+  }
+  return '';
+}
+function machTxt(d){
+  const parts = []; if (d.buyA) parts.push(`+${d.buyA} A`); if (d.buyB) parts.push(`+${d.buyB} B`); if ((d.sell||[]).length) parts.push('− '+d.sell.join(', '));
+  return parts.join(' · ') || '–';
+}
+function elasticityTable(k){
+  const {start:S} = cache[k]; const p = state.periods[k];
+  const rows = [-150,-100,-50,0,50,100,150].map(dp=>{
+    const d = {...p.dec, price:p.dec.price+dp};
+    const r = simulate(clone(S), p.par, d);
+    return {cls: dp===0?'sum':'', c:[fmt(d.price,0)+' EUR', fmt(r.d1,0), fmt(r.s1,0), fmt(r.U,2), fmt(r.ebit,2), fmt(r.uek,2)]};
+  });
+  return `<h3>Preis-Szenarien (übrige Entscheide gleich)</h3>`+tbl(['Preis','Nachfrage M1','Absatz M1','Umsatz','EBIT','ÜK'], rows);
+}
+
+function renderPeriods(){
+  $('#periods').innerHTML = PERIODS.map(k=>{
+    const exists = !!state.periods[k];
+    const sub = k==='P1' ? 'Test' : exists ? '' : '+';
+    return `<button data-period="${k}" aria-pressed="${state.cur===k}">${k}${sub?`<small>${sub}</small>`:''}</button>`;
+  }).join('');
+}
+function renderAll(){ runAll(); renderPeriods(); renderDecisions(); renderResults(); }
+function refreshResults(){ runAll(); renderResults(); }
+
+/* ---------- Ereignisse ---------- */
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if (t.dataset.k){
+    const p = state.periods[state.cur]; const obj = t.dataset.scope==='dec' ? p.dec : p.par;
+    let v;
+    if (t.type==='checkbox') v = t.checked;
+    else if (t.dataset.sel) v = isNaN(+t.value) ? t.value : +t.value;
+    else { if (t.value==='' || !isFinite(+t.value)) return; v = +t.value; if (t.dataset.pct) v = v/100; }
+    setPath(obj, t.dataset.k, v); save(); refreshResults();
+  } else if (t.dataset.sell){
+    const d = state.periods[state.cur].dec; d.sell = d.sell||[];
+    if (t.checked && !d.sell.includes(t.dataset.sell)) d.sell.push(t.dataset.sell);
+    if (!t.checked) d.sell = d.sell.filter(x=>x!==t.dataset.sell);
+    save(); refreshResults();
+  } else if (t.dataset.ist){
+    const p = state.periods[state.cur]; p.ist = p.ist||{};
+    if (t.value==='') delete p.ist[t.dataset.ist]; else p.ist[t.dataset.ist] = +t.value;
+    save(); refreshResults();
+  }
+});
+document.addEventListener('change', e=>{ if (e.target.dataset.sel || e.target.type==='checkbox') e.target.dispatchEvent(new Event('input',{bubbles:true})); });
+document.addEventListener('toggle', e=>{
+  const d = e.target; if (!d.matches || !d.matches('details.grp')) return;
+  const open = JSON.parse(sessionGet('open')||'{}'); open[d.dataset.key] = d.open; sessionSet('open', JSON.stringify(open));
+}, true);
+document.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.period){
+    const k = b.dataset.period, i = PERIODS.indexOf(k);
+    for (let j=1;j<=i;j++) ensurePeriod(PERIODS[j]);
+    state.cur = k; save(); renderAll(); return;
+  }
+  if (b.dataset.tab){ state.tab = b.dataset.tab; save(); renderResults(); return; }
+  if (b.id==='btn-var'){
+    const name = ($('#var-name').value||'').trim() || `Variante ${state.variants.filter(v=>v.period===state.cur).length+1}`;
+    const r = cache[state.cur].r;
+    state.variants.push({period:state.cur, name, dec:clone(state.periods[state.cur].dec), par:clone(state.periods[state.cur].par),
+      kpi:{sold_:r.sold_, U:r.U, ebit:r.ebit, jue:r.jue, uek:r.uek, ekq:r.ekq, hkUnit:r.hkUnit}});
+    save(); renderResults(); return;
+  }
+  if (b.dataset.load!==undefined){ const v = state.variants[+b.dataset.load]; state.periods[v.period].dec = clone(v.dec); state.periods[v.period].par = clone(v.par); save(); renderAll(); return; }
+  if (b.dataset.del!==undefined){ state.variants.splice(+b.dataset.del,1); save(); renderResults(); return; }
+  if (b.id==='btn-export'){
+    const txt = JSON.stringify(state); const ta = $('#io-text'); ta.value = txt;
+    const done = ()=>{ $('#io-msg').textContent = 'Daten kopiert. Auf dem anderen Gerät einfügen und laden.'; };
+    try { navigator.clipboard.writeText(txt).then(done, ()=>{ ta.select(); $('#io-msg').textContent = 'Text markiert: mit Ctrl+C kopieren.'; }); }
+    catch(err){ ta.select(); $('#io-msg').textContent = 'Text markiert: mit Ctrl+C kopieren.'; }
+    return;
+  }
+  if (b.id==='btn-import'){
+    try { const o = JSON.parse($('#io-text').value); if (!o.periods || !o.periods.P1) throw new Error(); state = o; save(); renderAll(); $('#io-msg').textContent = 'Daten geladen.'; }
+    catch(err){ $('#io-msg').textContent = 'Das sind keine gültigen Simulator-Daten. Bitte den kopierten Text vollständig einfügen.'; }
+    return;
+  }
+  if (b.id==='btn-reset-p'){
+    const k = state.cur; const d = defaultState();
+    if (d.periods[k]) state.periods[k] = d.periods[k]; else { delete state.periods[k]; ensurePeriod(k); }
+    save(); renderAll(); return;
+  }
+});
+renderAll();
+</script>
+
+</body>
+</html>
